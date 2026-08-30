@@ -121,7 +121,11 @@ export function getGlobeMix(progress) {
   return enter * exit
 }
 
-function GlobeArc({ curve, index, globeProgress, heroActive, reducedMotion, congested }) {
+export function getHeroMix(progress) {
+  return 1 - THREE.MathUtils.smoothstep(progress, 0.012, 0.115)
+}
+
+function GlobeArc({ curve, index, globeProgress, heroProgress, reducedMotion, congested }) {
   const line = useRef(null)
   const material = useRef(null)
   const pointCount = 112
@@ -133,8 +137,11 @@ function GlobeArc({ curve, index, globeProgress, heroActive, reducedMotion, cong
   useEffect(() => () => geometry.dispose(), [geometry])
 
   useFrame(() => {
-    const progress = heroActive ? 0.5 : (globeProgress?.get?.() ?? 0)
-    const mix = getGlobeMix(progress)
+    const replyProgress = globeProgress?.get?.() ?? 0
+    const heroMix = getHeroMix(heroProgress?.get?.() ?? 0)
+    const replyMix = getGlobeMix(replyProgress)
+    const progress = heroMix > replyMix ? 0.5 : replyProgress
+    const mix = Math.max(heroMix, replyMix)
     const reveal = reducedMotion
       ? 1
       : THREE.MathUtils.smoothstep(progress, 0.12 + index * 0.012, 0.38 + index * 0.018)
@@ -159,7 +166,7 @@ function GlobeArc({ curve, index, globeProgress, heroActive, reducedMotion, cong
   )
 }
 
-function GlobePackets({ curves, globeProgress, heroActive, reducedMotion, congestion, distance, loss }) {
+function GlobePackets({ curves, globeProgress, heroProgress, reducedMotion, congestion, distance, loss }) {
   const mesh = useRef(null)
   const material = useRef(null)
   const dummy = useMemo(() => new THREE.Object3D(), [])
@@ -175,8 +182,11 @@ function GlobePackets({ curves, globeProgress, heroActive, reducedMotion, conges
 
   useFrame(({ clock }) => {
     if (!mesh.current || !material.current) return
-    const progress = heroActive ? 0.5 : (globeProgress?.get?.() ?? 0)
-    const mix = getGlobeMix(progress)
+    const replyProgress = globeProgress?.get?.() ?? 0
+    const heroMix = getHeroMix(heroProgress?.get?.() ?? 0)
+    const replyMix = getGlobeMix(replyProgress)
+    const progress = heroMix > replyMix ? 0.5 : replyProgress
+    const mix = Math.max(heroMix, replyMix)
     const routeReveal = reducedMotion ? 1 : THREE.MathUtils.smoothstep(progress, 0.22, 0.5)
     const speed = 0.025 + (100 - congestion) * 0.00022
     const distanceDrag = THREE.MathUtils.lerp(1.2, 0.72, distance / 100)
@@ -217,7 +227,7 @@ function GlobePackets({ curves, globeProgress, heroActive, reducedMotion, conges
   )
 }
 
-function SurfacePoints({ globeProgress, heroActive }) {
+function SurfacePoints({ globeProgress, heroProgress }) {
   const material = useRef(null)
   const geometry = useMemo(() => {
     let seed = 8206
@@ -246,7 +256,7 @@ function SurfacePoints({ globeProgress, heroActive }) {
   useEffect(() => () => geometry.dispose(), [geometry])
 
   useFrame(() => {
-    if (material.current) material.current.opacity = (heroActive ? 1 : getGlobeMix(globeProgress?.get?.() ?? 0)) * 0.18
+    if (material.current) material.current.opacity = Math.max(getHeroMix(heroProgress?.get?.() ?? 0), getGlobeMix(globeProgress?.get?.() ?? 0)) * 0.18
   })
 
   return (
@@ -256,7 +266,7 @@ function SurfacePoints({ globeProgress, heroActive }) {
   )
 }
 
-function CityNodes({ globeProgress, heroActive }) {
+function CityNodes({ globeProgress, heroProgress }) {
   const group = useRef(null)
   const nodes = useMemo(
     () => [
@@ -269,7 +279,7 @@ function CityNodes({ globeProgress, heroActive }) {
 
   useFrame(({ clock }) => {
     if (!group.current) return
-    const mix = heroActive ? 1 : getGlobeMix(globeProgress?.get?.() ?? 0)
+    const mix = Math.max(getHeroMix(heroProgress?.get?.() ?? 0), getGlobeMix(globeProgress?.get?.() ?? 0))
     group.current.visible = mix > 0.002
     const pulse = 0.8 + Math.sin(clock.elapsedTime * 2.1) * 0.2
     group.current.children.forEach((node, index) => {
@@ -295,7 +305,7 @@ function CityNodes({ globeProgress, heroActive }) {
   )
 }
 
-function GlowSprite({ globeProgress, heroActive }) {
+function GlowSprite({ globeProgress, heroProgress }) {
   const material = useRef(null)
   const texture = useMemo(() => {
     const canvas = document.createElement('canvas')
@@ -316,7 +326,7 @@ function GlowSprite({ globeProgress, heroActive }) {
   useEffect(() => () => texture.dispose(), [texture])
 
   useFrame(() => {
-    if (material.current) material.current.opacity = (heroActive ? 1 : getGlobeMix(globeProgress?.get?.() ?? 0)) * 0.52
+    if (material.current) material.current.opacity = Math.max(getHeroMix(heroProgress?.get?.() ?? 0), getGlobeMix(globeProgress?.get?.() ?? 0)) * 0.52
   })
 
   return (
@@ -334,7 +344,7 @@ function GlowSprite({ globeProgress, heroActive }) {
   )
 }
 
-export default function GlobalGlobe({ globeProgress, heroActive, reducedMotion, congestion, distance, loss }) {
+export default function GlobalGlobe({ globeProgress, heroProgress, reducedMotion, congestion, distance, loss }) {
   const group = useRef(null)
   const globeMaterial = useRef(null)
   const atmosphereMaterial = useRef(null)
@@ -348,10 +358,13 @@ export default function GlobalGlobe({ globeProgress, heroActive, reducedMotion, 
 
   useFrame(({ clock }, delta) => {
     if (!group.current) return
-    const progress = heroActive ? 0.5 : (globeProgress?.get?.() ?? 0)
-    const mix = heroActive ? 1 : getGlobeMix(progress)
+    const replyProgress = globeProgress?.get?.() ?? 0
+    const heroMix = getHeroMix(heroProgress?.get?.() ?? 0)
+    const replyMix = getGlobeMix(replyProgress)
+    const progress = heroMix > replyMix ? 0.5 : replyProgress
+    const mix = Math.max(heroMix, replyMix)
     const mobile = viewport.width < 6.2
-    const landing = heroActive
+    const landing = heroMix > replyMix
     const reveal = THREE.MathUtils.smoothstep(progress, 0.02, 0.28)
     const exitDrift = THREE.MathUtils.smoothstep(progress, 0.74, 0.98)
     const baseScale = mobile ? 0.62 : landing ? 1.04 : 1
@@ -382,7 +395,7 @@ export default function GlobalGlobe({ globeProgress, heroActive, reducedMotion, 
 
   return (
     <group ref={group} visible={false}>
-      <GlowSprite globeProgress={globeProgress} heroActive={heroActive} />
+      <GlowSprite globeProgress={globeProgress} heroProgress={heroProgress} />
       <mesh>
         <sphereGeometry args={[GLOBE_RADIUS, 96, 96]} />
         <shaderMaterial
@@ -419,14 +432,14 @@ export default function GlobalGlobe({ globeProgress, heroActive, reducedMotion, 
           depthWrite={false}
         />
       </mesh>
-      <SurfacePoints globeProgress={globeProgress} heroActive={heroActive} />
+      <SurfacePoints globeProgress={globeProgress} heroProgress={heroProgress} />
       {curves.map((curve, index) => (
         <GlobeArc
           key={index}
           curve={curve}
           index={index}
           globeProgress={globeProgress}
-          heroActive={heroActive}
+          heroProgress={heroProgress}
           reducedMotion={reducedMotion}
           congested={congestion > 65}
         />
@@ -434,13 +447,13 @@ export default function GlobalGlobe({ globeProgress, heroActive, reducedMotion, 
       <GlobePackets
         curves={curves}
         globeProgress={globeProgress}
-        heroActive={heroActive}
+        heroProgress={heroProgress}
         reducedMotion={reducedMotion}
         congestion={congestion}
         distance={distance}
         loss={loss}
       />
-      <CityNodes globeProgress={globeProgress} heroActive={heroActive} />
+      <CityNodes globeProgress={globeProgress} heroProgress={heroProgress} />
     </group>
   )
 }

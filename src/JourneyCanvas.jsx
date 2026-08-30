@@ -3,7 +3,7 @@ import { Float, Sparkles } from '@react-three/drei'
 import React from 'react'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import GlobalGlobe, { getGlobeMix } from './GlobalGlobe.jsx'
+import GlobalGlobe, { getGlobeMix, getHeroMix } from './GlobalGlobe.jsx'
 
 const routeSets = [
   [[-5, -2, 0], [-2.8, -0.8, 0.5], [-0.5, 1.4, 0], [2.5, 0.9, -0.4], [5, 2.2, 0]],
@@ -107,7 +107,7 @@ function CameraRig({ scrollProgress, scrollVelocity, globeProgress, heroActive, 
   useFrame((_, delta) => {
     if (reducedMotion) return
     const progress = scrollProgress?.get?.() ?? 0
-    const globeMix = heroActive ? 1 : getGlobeMix(globeProgress?.get?.() ?? 0)
+    const globeMix = Math.max(getHeroMix(scrollProgress?.get?.() ?? 0), getGlobeMix(globeProgress?.get?.() ?? 0))
     const velocity = Math.min(Math.abs(scrollVelocity?.get?.() ?? 0), 1.5)
     target.current.set(
       THREE.MathUtils.lerp(Math.sin(progress * Math.PI * 3.5) * .42, 0, globeMix),
@@ -135,7 +135,7 @@ function Network({ congestion, distance, loss, reducedMotion, scrollProgress, sc
   useFrame(({ clock }, delta) => {
     if (!group.current) return
     const progress = scrollProgress?.get?.() ?? 0
-    const globeMix = heroActive ? 1 : getGlobeMix(globeProgress?.get?.() ?? 0)
+    const globeMix = Math.max(getHeroMix(scrollProgress?.get?.() ?? 0), getGlobeMix(globeProgress?.get?.() ?? 0))
     const velocity = Math.min(Math.abs(scrollVelocity?.get?.() ?? 0), 1.5)
     targetPosition.current.set(
       Math.sin(progress * Math.PI * 4) * .46,
@@ -225,7 +225,7 @@ export default function JourneyCanvas({ congestion, distance, loss, globeActive,
           scrollProgress={scrollProgress}
           scrollVelocity={scrollVelocity}
           globeProgress={globeProgress}
-          heroActive={heroActive}
+          heroProgress={scrollProgress}
         />
         <GlobalGlobe
           globeProgress={globeProgress}
