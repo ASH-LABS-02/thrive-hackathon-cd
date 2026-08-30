@@ -44,6 +44,13 @@ function useSoundscape(enabled) {
     gain.gain.setTargetAtTime(0.022, context.currentTime, 0.25)
   }, [enabled])
 
+  useEffect(() => () => {
+    if (!audioRef.current) return
+    audioRef.current.gain.gain.cancelScheduledValues(audioRef.current.context.currentTime)
+    audioRef.current.context.close()
+    audioRef.current = null
+  }, [])
+
   return useCallback(() => {
     if (!enabled || !audioRef.current) return
     const { context, gain } = audioRef.current
@@ -73,11 +80,11 @@ function LoadingScreen({ progress }) {
   )
 }
 
-function AnimatedTitle({ children, active }) {
+function AnimatedTitle({ children, active, as: Heading = 'h2' }) {
   const words = children.split(' ')
 
   return (
-    <h1 aria-label={children}>
+    <Heading aria-label={children}>
       {words.map((word, index) => (
         <span className="title-word" aria-hidden="true" key={`${word}-${index}`}>
           <motion.span
@@ -90,7 +97,7 @@ function AnimatedTitle({ children, active }) {
           {index < words.length - 1 ? '\u00a0' : ''}
         </span>
       ))}
-    </h1>
+    </Heading>
   )
 }
 
@@ -130,7 +137,7 @@ function Chapter({ chapter, position, active, onEnter }) {
   const isArrival = chapter.id === 'arrival'
 
   return (
-    <section ref={ref} id={chapter.id} className={`chapter chapter-${chapter.align} ${isHero ? 'chapter-hero' : ''}`}>
+    <section ref={ref} id={chapter.id} className={`chapter chapter-${chapter.align} chapter-${chapter.id} ${isHero ? 'chapter-hero' : ''}`}>
       <motion.div
         className="chapter-image"
         animate={active ? { filter: 'saturate(1.06) brightness(1)' } : { filter: 'saturate(.84) brightness(.72)' }}
@@ -148,7 +155,7 @@ function Chapter({ chapter, position, active, onEnter }) {
       >
         <div className="chapter-marker"><span>{chapter.index}</span><i /></div>
         <motion.p className="chapter-label" initial={{ opacity: 0, letterSpacing: '.34em' }} whileInView={{ opacity: 1, letterSpacing: '.2em' }} viewport={{ amount: .7, once: false }} transition={{ duration: .7 }}>{chapter.label}</motion.p>
-        <AnimatedTitle active={active}>{chapter.title}</AnimatedTitle>
+        <AnimatedTitle active={active} as={isHero ? 'h1' : 'h2'}>{chapter.title}</AnimatedTitle>
         <motion.p className="chapter-lead" initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ amount: .5, once: false }} transition={{ duration: .7, delay: .16 }}>{chapter.copy}</motion.p>
         {!isHero && <motion.p className="chapter-detail" initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ amount: .5, once: false }} transition={{ duration: .7, delay: .24 }}>{chapter.detail}</motion.p>}
         <motion.div className="chapter-fact" initial={{ opacity: 0, x: chapter.align === 'right' ? 20 : -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ amount: .7, once: false }} transition={{ duration: .65, delay: .3 }}><span className="pulse-dot" />{chapter.fact}</motion.div>
@@ -165,6 +172,91 @@ function Chapter({ chapter, position, active, onEnter }) {
       </motion.div>
       <motion.div className="chapter-transition" style={{ scaleX: transitionScale }} />
       <AnimatePresence>{active && !isHero ? <motion.div className="active-glow" initial={{ scaleY: 0, opacity: 0 }} animate={{ scaleY: 1, opacity: 1 }} exit={{ scaleY: 0, opacity: 0 }} transition={{ duration: .7, ease: [0.22, 1, 0.36, 1] }} /> : null}</AnimatePresence>
+    </section>
+  )
+}
+
+function GlobeOverlay({ chapter, progress, active }) {
+  const opacity = useTransform(progress, [0, 0.055, 0.88, 1], [0, 1, 1, 0])
+  const panelX = useTransform(progress, [0, 0.22, 0.76, 1], [150, 0, 0, 72])
+  const panelY = useTransform(progress, [0, 0.28, 0.76, 1], [46, 0, 0, -34])
+  const panelScale = useTransform(progress, [0, 0.25, 0.82, 1], [0.92, 1, 1, 0.97])
+  const panelRotate = useTransform(progress, [0, 0.28, 0.78, 1], [-9, 0, 0, 4])
+  const labelsOpacity = useTransform(progress, [0.1, 0.27, 0.76, 0.9], [0, 1, 1, 0])
+  const railScale = useTransform(progress, [0.05, 0.82], [0, 1])
+
+  return (
+    <motion.section
+      className="globe-overlay"
+      style={{ opacity }}
+      aria-hidden={!active}
+      aria-label={`${chapter.label}: ${chapter.title}`}
+    >
+      <motion.div className="globe-city-label globe-city-label-source" style={{ opacity: labelsOpacity }}>
+        <span /> New York
+      </motion.div>
+      <motion.div className="globe-city-label globe-city-label-destination" style={{ opacity: labelsOpacity }}>
+        Singapore <span />
+      </motion.div>
+
+      <motion.div
+        className="globe-copy-panel"
+        style={{ x: panelX, y: panelY, scale: panelScale, rotateY: panelRotate }}
+      >
+        <div className="chapter-marker"><span>{chapter.index}</span><i /></div>
+        <p className="chapter-label">{chapter.label}</p>
+        <AnimatedTitle active={active}>{chapter.title}</AnimatedTitle>
+        <p className="globe-lead">{chapter.copy}</p>
+        <p className="globe-detail">{chapter.detail}</p>
+        <div className="globe-route-state" aria-label="Return route active">
+          <span className="route-node route-node-live" />
+          <i />
+          <span className="route-packet" />
+          <i />
+          <span className="route-node" />
+          <b>return route · encrypted · live</b>
+        </div>
+      </motion.div>
+
+      <div className="globe-timeline" aria-hidden="true">
+        <motion.i style={{ scaleX: railScale }} />
+        {chapters.map((item) => (
+          <span key={item.id} className={item.id === chapter.id ? 'active' : ''}>
+            <b>{item.index}</b><em />
+          </span>
+        ))}
+      </div>
+    </motion.section>
+  )
+}
+
+function GlobeScrollChapter({ chapter, position, active, onEnter, sectionRef }) {
+  const localRef = useRef(null)
+  const setRef = useCallback((node) => {
+    localRef.current = node
+    sectionRef.current = node
+  }, [sectionRef])
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) onEnter(position)
+      },
+      { threshold: 0, rootMargin: '-28% 0px -28% 0px' },
+    )
+    if (localRef.current) observer.observe(localRef.current)
+    return () => observer.disconnect()
+  }, [onEnter, position])
+
+  return (
+    <section
+      ref={setRef}
+      id={chapter.id}
+      className={`globe-scroll-chapter ${active ? 'active' : ''}`}
+      aria-label={`${chapter.label}: ${chapter.title}`}
+    >
+      <div className="globe-scroll-aura" aria-hidden="true" />
+      <span className="sr-only">{chapter.copy} {chapter.detail} {chapter.fact}</span>
     </section>
   )
 }
@@ -205,7 +297,7 @@ function Slider({ label, value, setValue, low, high, warning }) {
         min="0"
         max="100"
         value={value}
-        onInput={(event) => setValue(Number(event.currentTarget.value))}
+        onChange={(event) => setValue(Number(event.currentTarget.value))}
         style={{ '--value': `${value}%` }}
       />
       <span className="slider-scale"><i>{low}</i><i>{high}</i></span>
@@ -239,6 +331,7 @@ function HowItWorks() {
 
 export default function App() {
   const prefersReducedMotion = useReducedMotion()
+  const globeSectionRef = useRef(null)
   const [active, setActive] = useState(0)
   const [soundOn, setSoundOn] = useState(false)
   const [paused, setPaused] = useState(false)
@@ -248,6 +341,10 @@ export default function App() {
   const [loadProgress, setLoadProgress] = useState(0)
   const [ready, setReady] = useState(false)
   const { scrollYProgress } = useScroll()
+  const { scrollYProgress: globeProgress } = useScroll({
+    target: globeSectionRef,
+    offset: ['start start', 'end end'],
+  })
   const scaleX = useSpring(scrollYProgress, { stiffness: 95, damping: 22, restDelta: 0.001 })
   const rawScrollVelocity = useVelocity(scrollYProgress)
   const scrollVelocity = useSpring(rawScrollVelocity, { stiffness: 90, damping: 28, mass: .35 })
@@ -256,20 +353,49 @@ export default function App() {
   const playCue = useSoundscape(soundOn)
 
   useEffect(() => {
-    let loaded = 0
-    const uniqueImages = [...new Set(chapters.map((chapter) => chapter.image))]
-    uniqueImages.forEach((src) => {
-      const image = new Image()
-      const done = () => {
-        loaded += 1
-        const progress = Math.round((loaded / uniqueImages.length) * 100)
-        setLoadProgress(progress)
-        if (loaded === uniqueImages.length) window.setTimeout(() => setReady(true), 280)
-      }
-      image.onload = done
-      image.onerror = done
-      image.src = src
-    })
+    let cancelled = false
+    let revealTimer
+    let preloadHandle
+    const uniqueImages = [...new Set(chapters.map((chapter) => chapter.image).filter(Boolean))]
+    const [heroSource, ...laterSources] = uniqueImages
+
+    const preloadLaterScenes = () => {
+      laterSources.forEach((src) => {
+        const image = new Image()
+        image.src = src
+      })
+    }
+
+    const reveal = () => {
+      if (cancelled) return
+      setLoadProgress(100)
+      revealTimer = window.setTimeout(() => {
+        if (cancelled) return
+        setReady(true)
+        if ('requestIdleCallback' in window) {
+          preloadHandle = window.requestIdleCallback(preloadLaterScenes, { timeout: 1800 })
+        } else {
+          preloadHandle = window.setTimeout(preloadLaterScenes, 450)
+        }
+      }, 220)
+    }
+
+    setLoadProgress(24)
+    if (!heroSource) {
+      reveal()
+    } else {
+      const heroImage = new Image()
+      heroImage.onload = reveal
+      heroImage.onerror = reveal
+      heroImage.src = heroSource
+    }
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(revealTimer)
+      if ('cancelIdleCallback' in window) window.cancelIdleCallback(preloadHandle)
+      else window.clearTimeout(preloadHandle)
+    }
   }, [])
 
   const handleEnter = useCallback((index) => {
@@ -280,12 +406,16 @@ export default function App() {
   }, [playCue])
 
   const activeLabel = useMemo(() => chapters[active]?.label ?? 'The send', [active])
+  const activeChapter = chapters[active] ?? chapters[0]
+  const globeActive = activeChapter.id === 'reply'
 
   return (
     <>
+      <a className="skip-link" href="#main-content">Skip to the story</a>
       <AnimatePresence>{!ready && <LoadingScreen progress={loadProgress} />}</AnimatePresence>
       <motion.div className="scroll-progress" style={{ scaleX }} />
       <motion.div className="scroll-aurora" style={{ y: ambientY, rotate: ambientRotate }} aria-hidden="true" />
+      <div className="site-grain" aria-hidden="true" />
       <header className="site-header">
         <a href="#send" className="brand" aria-label="The Secret Life of a Message, back to start">
           <span className="brand-signal" />
@@ -294,20 +424,40 @@ export default function App() {
         <nav aria-label="Primary navigation">
           <a href="#city">Journey</a>
           <a href="#route-lab">Route lab</a>
+          <a href="#reply">The reply</a>
           <a href="#how">How it works</a>
         </nav>
+        <div className="header-chapter-status" aria-live="polite">
+          <span>{activeChapter.index}</span>
+          <i />
+          <b>{activeLabel}</b>
+        </div>
         <div className="header-controls">
-          <button onClick={() => setPaused((value) => !value)} aria-label={paused ? 'Resume animation' : 'Pause animation'}>
+          <button
+            onClick={() => setPaused((value) => !value)}
+            aria-label={paused ? 'Resume visual motion' : 'Pause visual motion'}
+            aria-pressed={paused}
+          >
             {paused ? <Play size={17} /> : <Pause size={17} />}
           </button>
-          <button onClick={() => setSoundOn((value) => !value)} aria-label={soundOn ? 'Mute sound' : 'Enable sound'}>
+          <button
+            onClick={() => setSoundOn((value) => !value)}
+            aria-label={soundOn ? 'Mute sound' : 'Enable sound'}
+            aria-pressed={soundOn}
+          >
             {soundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
           </button>
         </div>
       </header>
       <aside className="chapter-progress" aria-label={`Current chapter: ${activeLabel}`}>
         {chapters.map((chapter, index) => (
-          <a key={chapter.id} href={`#${chapter.id}`} className={index === active ? 'active' : ''} aria-label={`Go to ${chapter.label}`}>
+          <a
+            key={chapter.id}
+            href={`#${chapter.id}`}
+            className={index === active ? 'active' : ''}
+            aria-label={`Go to ${chapter.label}`}
+            aria-current={index === active ? 'step' : undefined}
+          >
             <span>{chapter.index}</span><i />
           </a>
         ))}
@@ -315,13 +465,17 @@ export default function App() {
       <Suspense fallback={null}>
         <JourneyCanvas
           congestion={congestion}
+          distance={distance}
           loss={loss}
+          globeActive={globeActive}
+          globeProgress={globeProgress}
           reducedMotion={Boolean(prefersReducedMotion || paused)}
           scrollProgress={scrollYProgress}
           scrollVelocity={scrollVelocity}
         />
       </Suspense>
-      <main>
+      <GlobeOverlay chapter={chapters[6]} progress={globeProgress} active={globeActive} />
+      <main id="main-content">
         {chapters.slice(0, 6).map((chapter, index) => (
           <Chapter key={chapter.id} chapter={chapter} position={index} active={active === index} onEnter={handleEnter} />
         ))}
@@ -333,7 +487,14 @@ export default function App() {
           loss={loss}
           setLoss={setLoss}
         />
-        <Chapter chapter={chapters[6]} position={6} active={active === 6} onEnter={handleEnter} />
+        <GlobeScrollChapter
+          chapter={chapters[6]}
+          position={6}
+          active={globeActive}
+          onEnter={handleEnter}
+          sectionRef={globeSectionRef}
+        />
+        <Chapter chapter={chapters[7]} position={7} active={active === 7} onEnter={handleEnter} />
         <HowItWorks />
       </main>
       <footer>

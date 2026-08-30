@@ -1,8 +1,9 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Float, Sparkles } from '@react-three/drei'
 import React from 'react'
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import GlobalGlobe, { getGlobeMix } from './GlobalGlobe.jsx'
 
 const routeSets = [
   [[-5, -2, 0], [-2.8, -0.8, 0.5], [-0.5, 1.4, 0], [2.5, 0.9, -0.4], [5, 2.2, 0]],
@@ -23,19 +24,25 @@ function RouteLine({ curve, color = '#30d9ff', opacity = 0.46 }) {
   )
 }
 
-function Packet({ curve, offset, speed, lost, reducedMotion, scrollProgress, scrollVelocity }) {
+function Packet({ curve, offset, speed, distance, lost, reducedMotion, scrollProgress, scrollVelocity }) {
   const ref = useRef()
+  const position = useRef(new THREE.Vector3())
+  const tangent = useRef(new THREE.Vector3())
+  const lookTarget = useRef(new THREE.Vector3())
   useFrame(({ clock }) => {
     if (!ref.current) return
     const progress = scrollProgress?.get?.() ?? 0
     const velocity = Math.min(Math.abs(scrollVelocity?.get?.() ?? 0), 1.4)
-    const t = reducedMotion ? offset : (clock.elapsedTime * (speed + velocity * .018) + offset + progress * .72) % 1
-    const position = curve.getPointAt(t)
-    const tangent = curve.getTangentAt(t)
-    ref.current.position.copy(position)
-    ref.current.lookAt(position.clone().add(tangent))
-    const vanish = lost && t > 0.52 && t < 0.68
-    const baseScale = vanish ? Math.max(0.02, (0.68 - t) * 5.8) : 1
+    const distanceDrag = THREE.MathUtils.lerp(1.12, .74, distance / 100)
+    const t = reducedMotion ? offset : (clock.elapsedTime * (speed + velocity * .018) * distanceDrag + offset + progress * .72) % 1
+    curve.getPointAt(t, position.current)
+    curve.getTangentAt(t, tangent.current)
+    ref.current.position.copy(position.current)
+    lookTarget.current.copy(position.current).add(tangent.current)
+    ref.current.lookAt(lookTarget.current)
+    let baseScale = 1
+    if (lost && t > .48 && t < .64) baseScale = 1 - THREE.MathUtils.smoothstep(t, .48, .64)
+    if (lost && t >= .64 && t < .79) baseScale = THREE.MathUtils.smoothstep(t, .64, .79)
     ref.current.scale.setScalar(baseScale * (1 + velocity * .22))
     ref.current.rotation.z += reducedMotion ? 0 : .012 + velocity * .018
   })
@@ -93,18 +100,19 @@ function SignalCore({ scrollProgress, scrollVelocity, reducedMotion }) {
   )
 }
 
-function CameraRig({ scrollProgress, scrollVelocity, reducedMotion }) {
+function CameraRig({ scrollProgress, scrollVelocity, globeProgress, reducedMotion }) {
   const { camera } = useThree()
   const target = useRef(new THREE.Vector3())
 
   useFrame((_, delta) => {
     if (reducedMotion) return
     const progress = scrollProgress?.get?.() ?? 0
+    const globeMix = getGlobeMix(globeProgress?.get?.() ?? 0)
     const velocity = Math.min(Math.abs(scrollVelocity?.get?.() ?? 0), 1.5)
     target.current.set(
-      Math.sin(progress * Math.PI * 3.5) * .42,
-      Math.cos(progress * Math.PI * 5) * .2,
-      7 - Math.sin(progress * Math.PI * 2) * .34 - velocity * .08,
+      THREE.MathUtils.lerp(Math.sin(progress * Math.PI * 3.5) * .42, 0, globeMix),
+      THREE.MathUtils.lerp(Math.cos(progress * Math.PI * 5) * .2, 0, globeMix),
+      THREE.MathUtils.lerp(7 - Math.sin(progress * Math.PI * 2) * .34 - velocity * .08, 7.15, globeMix),
     )
     camera.position.lerp(target.current, Math.min(1, delta * 2.7))
     camera.lookAt(0, 0, 0)
@@ -114,7 +122,7 @@ function CameraRig({ scrollProgress, scrollVelocity, reducedMotion }) {
   return null
 }
 
-function Network({ congestion, loss, reducedMotion, scrollProgress, scrollVelocity }) {
+function Network({ congestion, distance, loss, reducedMotion, scrollProgress, scrollVelocity, globeProgress }) {
   const group = useRef()
   const targetPosition = useRef(new THREE.Vector3())
   const targetScale = useRef(new THREE.Vector3(1, 1, 1))
@@ -127,6 +135,7 @@ function Network({ congestion, loss, reducedMotion, scrollProgress, scrollVeloci
   useFrame(({ clock }, delta) => {
     if (!group.current) return
     const progress = scrollProgress?.get?.() ?? 0
+    const globeMix = getGlobeMix(globeProgress?.get?.() ?? 0)
     const velocity = Math.min(Math.abs(scrollVelocity?.get?.() ?? 0), 1.5)
     targetPosition.current.set(
       Math.sin(progress * Math.PI * 4) * .46,
@@ -134,9 +143,11 @@ function Network({ congestion, loss, reducedMotion, scrollProgress, scrollVeloci
       Math.sin(progress * Math.PI * 2) * -.52,
     )
     group.current.position.lerp(targetPosition.current, Math.min(1, delta * 3.2))
-    const scale = .94 + Math.sin(progress * Math.PI * 7) * .08 + velocity * .045
-    targetScale.current.setScalar(scale)
+    const scale = (.94 + Math.sin(progress * Math.PI * 7) * .08 + velocity * .045) * (1 - globeMix * .94)
+    const distanceStretch = .88 + distance * .0032
+    targetScale.current.set(scale * distanceStretch, scale, scale)
     group.current.scale.lerp(targetScale.current, Math.min(1, delta * 4))
+    group.current.visible = globeMix < .985
     if (!reducedMotion) {
       group.current.rotation.x = -.08 + Math.sin(progress * Math.PI * 4) * .16
       group.current.rotation.y = -.1 + Math.cos(progress * Math.PI * 5) * .18
@@ -157,6 +168,7 @@ function Network({ congestion, loss, reducedMotion, scrollProgress, scrollVeloci
             curve={curves[pathIndex]}
             offset={index / packetCount}
             speed={0.055 + (100 - congestion) * 0.00038}
+            distance={distance}
             lost={loss > 38 && index === 5}
             reducedMotion={reducedMotion}
             scrollProgress={scrollProgress}
@@ -164,21 +176,63 @@ function Network({ congestion, loss, reducedMotion, scrollProgress, scrollVeloci
           />
         )
       })}
-      <Float speed={1.3} rotationIntensity={0.25} floatIntensity={0.2}>
+      <Float
+        speed={reducedMotion ? 0 : 1.3}
+        rotationIntensity={reducedMotion ? 0 : 0.25}
+        floatIntensity={reducedMotion ? 0 : 0.2}
+      >
         <SignalCore scrollProgress={scrollProgress} scrollVelocity={scrollVelocity} reducedMotion={reducedMotion} />
       </Float>
     </group>
   )
 }
 
-export default function JourneyCanvas({ congestion, loss, reducedMotion, scrollProgress, scrollVelocity }) {
+function MotionInvalidator({ reducedMotion, scrollProgress, globeProgress }) {
+  const invalidate = useThree((state) => state.invalidate)
+
+  useEffect(() => {
+    if (!reducedMotion) return undefined
+    const unsubscribeScroll = scrollProgress?.on?.('change', invalidate)
+    const unsubscribeGlobe = globeProgress?.on?.('change', invalidate)
+    invalidate()
+    return () => {
+      unsubscribeScroll?.()
+      unsubscribeGlobe?.()
+    }
+  }, [globeProgress, invalidate, reducedMotion, scrollProgress])
+
+  return null
+}
+
+export default function JourneyCanvas({ congestion, distance, loss, globeActive, globeProgress, reducedMotion, scrollProgress, scrollVelocity }) {
   return (
-    <div className="journey-canvas" aria-hidden="true">
-      <Canvas dpr={[1, 1.6]} camera={{ position: [0, 0, 7], fov: 48 }} gl={{ alpha: true, antialias: true }}>
+    <div className={`journey-canvas ${globeActive ? 'globe-active' : ''}`} aria-hidden="true">
+      <Canvas
+        dpr={[1, 1.5]}
+        frameloop={reducedMotion ? 'demand' : 'always'}
+        camera={{ position: [0, 0, 7], fov: 48 }}
+        gl={{ alpha: true, antialias: true, powerPreference: 'high-performance' }}
+      >
         <ambientLight intensity={0.34} />
         <pointLight position={[2, 3, 4]} color="#4be3ff" intensity={18} distance={9} />
-        <CameraRig scrollProgress={scrollProgress} scrollVelocity={scrollVelocity} reducedMotion={reducedMotion} />
-        <Network congestion={congestion} loss={loss} reducedMotion={reducedMotion} scrollProgress={scrollProgress} scrollVelocity={scrollVelocity} />
+        <MotionInvalidator reducedMotion={reducedMotion} scrollProgress={scrollProgress} globeProgress={globeProgress} />
+        <CameraRig scrollProgress={scrollProgress} scrollVelocity={scrollVelocity} globeProgress={globeProgress} reducedMotion={reducedMotion} />
+        <Network
+          congestion={congestion}
+          distance={distance}
+          loss={loss}
+          reducedMotion={reducedMotion}
+          scrollProgress={scrollProgress}
+          scrollVelocity={scrollVelocity}
+          globeProgress={globeProgress}
+        />
+        <GlobalGlobe
+          globeProgress={globeProgress}
+          reducedMotion={reducedMotion}
+          congestion={congestion}
+          distance={distance}
+          loss={loss}
+        />
         <Sparkles count={reducedMotion ? 20 : 65} scale={[11, 6, 3]} size={0.7} speed={reducedMotion ? 0 : 0.12} opacity={0.34} color="#72dff6" />
       </Canvas>
     </div>
