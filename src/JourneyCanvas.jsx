@@ -100,14 +100,14 @@ function SignalCore({ scrollProgress, scrollVelocity, reducedMotion }) {
   )
 }
 
-function CameraRig({ scrollProgress, scrollVelocity, globeProgress, reducedMotion }) {
+function CameraRig({ scrollProgress, scrollVelocity, globeProgress, heroActive, reducedMotion }) {
   const { camera } = useThree()
   const target = useRef(new THREE.Vector3())
 
   useFrame((_, delta) => {
     if (reducedMotion) return
     const progress = scrollProgress?.get?.() ?? 0
-    const globeMix = getGlobeMix(globeProgress?.get?.() ?? 0)
+    const globeMix = heroActive ? 1 : getGlobeMix(globeProgress?.get?.() ?? 0)
     const velocity = Math.min(Math.abs(scrollVelocity?.get?.() ?? 0), 1.5)
     target.current.set(
       THREE.MathUtils.lerp(Math.sin(progress * Math.PI * 3.5) * .42, 0, globeMix),
@@ -122,7 +122,7 @@ function CameraRig({ scrollProgress, scrollVelocity, globeProgress, reducedMotio
   return null
 }
 
-function Network({ congestion, distance, loss, reducedMotion, scrollProgress, scrollVelocity, globeProgress }) {
+function Network({ congestion, distance, loss, reducedMotion, scrollProgress, scrollVelocity, globeProgress, heroActive }) {
   const group = useRef()
   const targetPosition = useRef(new THREE.Vector3())
   const targetScale = useRef(new THREE.Vector3(1, 1, 1))
@@ -135,7 +135,7 @@ function Network({ congestion, distance, loss, reducedMotion, scrollProgress, sc
   useFrame(({ clock }, delta) => {
     if (!group.current) return
     const progress = scrollProgress?.get?.() ?? 0
-    const globeMix = getGlobeMix(globeProgress?.get?.() ?? 0)
+    const globeMix = heroActive ? 1 : getGlobeMix(globeProgress?.get?.() ?? 0)
     const velocity = Math.min(Math.abs(scrollVelocity?.get?.() ?? 0), 1.5)
     targetPosition.current.set(
       Math.sin(progress * Math.PI * 4) * .46,
@@ -204,9 +204,9 @@ function MotionInvalidator({ reducedMotion, scrollProgress, globeProgress }) {
   return null
 }
 
-export default function JourneyCanvas({ congestion, distance, loss, globeActive, globeProgress, reducedMotion, scrollProgress, scrollVelocity }) {
+export default function JourneyCanvas({ congestion, distance, loss, globeActive, heroActive, globeProgress, reducedMotion, scrollProgress, scrollVelocity }) {
   return (
-    <div className={`journey-canvas ${globeActive ? 'globe-active' : ''}`} aria-hidden="true">
+    <div className={`journey-canvas ${globeActive ? 'globe-active' : ''} ${heroActive ? 'hero-active' : ''}`} aria-hidden="true">
       <Canvas
         dpr={[1, 1.5]}
         frameloop={reducedMotion ? 'demand' : 'always'}
@@ -216,7 +216,7 @@ export default function JourneyCanvas({ congestion, distance, loss, globeActive,
         <ambientLight intensity={0.34} />
         <pointLight position={[2, 3, 4]} color="#4be3ff" intensity={18} distance={9} />
         <MotionInvalidator reducedMotion={reducedMotion} scrollProgress={scrollProgress} globeProgress={globeProgress} />
-        <CameraRig scrollProgress={scrollProgress} scrollVelocity={scrollVelocity} globeProgress={globeProgress} reducedMotion={reducedMotion} />
+        <CameraRig scrollProgress={scrollProgress} scrollVelocity={scrollVelocity} globeProgress={globeProgress} heroActive={heroActive} reducedMotion={reducedMotion} />
         <Network
           congestion={congestion}
           distance={distance}
@@ -225,9 +225,11 @@ export default function JourneyCanvas({ congestion, distance, loss, globeActive,
           scrollProgress={scrollProgress}
           scrollVelocity={scrollVelocity}
           globeProgress={globeProgress}
+          heroActive={heroActive}
         />
         <GlobalGlobe
           globeProgress={globeProgress}
+          heroActive={heroActive}
           reducedMotion={reducedMotion}
           congestion={congestion}
           distance={distance}

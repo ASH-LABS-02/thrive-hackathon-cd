@@ -142,7 +142,7 @@ function Chapter({ chapter, position, active, onEnter }) {
         className="chapter-image"
         animate={active ? { filter: 'saturate(1.06) brightness(1)' } : { filter: 'saturate(.84) brightness(.72)' }}
         transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
-        style={{ backgroundImage: `url(${chapter.image})`, y: imageY, scale: imageScale, opacity: imageOpacity }}
+        style={{ backgroundImage: isHero ? 'none' : `url(${chapter.image})`, y: imageY, scale: imageScale, opacity: imageOpacity }}
         role="img"
         aria-label={`${chapter.label}: ${chapter.title}`}
       />
@@ -468,6 +468,7 @@ export default function App() {
           distance={distance}
           loss={loss}
           globeActive={globeActive}
+          heroActive={activeChapter.id === 'send'}
           globeProgress={globeProgress}
           reducedMotion={Boolean(prefersReducedMotion || paused)}
           scrollProgress={scrollYProgress}
