@@ -219,9 +219,9 @@ function MotionInvalidator({ reducedMotion, scrollProgress, globeProgress }) {
   return null
 }
 
-export default function JourneyCanvas({ congestion, distance, loss, globeActive, heroActive, globeProgress, reducedMotion, scrollProgress, scrollVelocity }) {
+export default function JourneyCanvas({ congestion, distance, loss, globeActive, heroActive, globeProgress, reducedMotion, scrollProgress, scrollVelocity, burstKey, arrivalActive }) {
   return (
-    <div className={`journey-canvas ${globeActive ? 'globe-active' : ''} ${heroActive ? 'hero-active' : ''}`} aria-hidden="true">
+    <div className={`journey-canvas ${globeActive ? 'globe-active' : ''} ${heroActive ? 'hero-active' : ''} ${arrivalActive ? 'arrival-active' : ''}`} aria-hidden="true">
       <Canvas
         dpr={[1, 1.5]}
         frameloop={reducedMotion ? 'demand' : 'always'}
@@ -245,6 +245,7 @@ export default function JourneyCanvas({ congestion, distance, loss, globeActive,
         <GlobalGlobe
           globeProgress={globeProgress}
           heroProgress={scrollProgress}
+          burstKey={burstKey}
           reducedMotion={reducedMotion}
           congestion={congestion}
           distance={distance}

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 
 const GLOBE_RADIUS = 2.28
-const UP = new THREE.Vector3(0, 0, 1)
+const PACKET_AXIS = new THREE.Vector3(0, 1, 0)
 
 const vertexShader = /* glsl */ `
   varying vec3 vNormalView;
@@ -61,11 +61,11 @@ const globeFragmentShader = /* glsl */ `
     float rim = pow(1.0 - max(dot(normalize(vNormalView), vec3(0.0, 0.0, 1.0)), 0.0), 2.45);
     float pulse = 0.92 + sin(uTime * 0.42) * 0.035;
 
-    vec3 ocean = vec3(0.025, 0.20, 0.27);
-    vec3 landColor = vec3(0.20, 0.64, 0.72);
+    vec3 ocean = vec3(0.035, 0.235, 0.31);
+    vec3 landColor = vec3(0.23, 0.70, 0.79);
     vec3 color = mix(ocean, landColor, land);
-    color += micro * vec3(0.08, 0.34, 0.42);
-    color += rim * vec3(0.22, 0.88, 1.0) * 1.35 * pulse;
+    color += micro * vec3(0.10, 0.40, 0.48);
+    color += rim * vec3(0.22, 0.88, 1.0) * 1.52 * pulse;
 
     gl_FragColor = vec4(color, uAlpha);
   }
@@ -220,6 +220,60 @@ function GlobePackets({ curves, globeProgress, heroProgress, reducedMotion, cong
   )
 }
 
+function CometPackets({ curves, globeProgress, heroProgress, reducedMotion, congestion, distance }) {
+  const mesh = useRef(null)
+  const material = useRef(null)
+  const dummy = useMemo(() => new THREE.Object3D(), [])
+  const position = useMemo(() => new THREE.Vector3(), [])
+  const tangent = useMemo(() => new THREE.Vector3(), [])
+  const cometCount = 5
+
+  useEffect(() => {
+    if (mesh.current) mesh.current.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
+  }, [])
+
+  useFrame(({ clock }) => {
+    if (!mesh.current || !material.current) return
+    const replyProgress = globeProgress?.get?.() ?? 0
+    const heroMix = getHeroMix(heroProgress?.get?.() ?? 0)
+    const replyMix = getGlobeMix(replyProgress)
+    const mix = Math.max(heroMix, replyMix)
+    const speed = 0.115 + (100 - congestion) * 0.00035
+    const distanceDrag = THREE.MathUtils.lerp(1.16, 0.78, distance / 100)
+
+    for (let index = 0; index < cometCount; index += 1) {
+      const curve = curves[index % curves.length]
+      const t = reducedMotion ? index / cometCount : (clock.elapsedTime * speed * distanceDrag + index * 0.193) % 1
+      curve.getPointAt(t, position)
+      curve.getTangentAt(t, tangent).normalize()
+      dummy.position.copy(position)
+      dummy.quaternion.setFromUnitVectors(PACKET_AXIS, tangent)
+      dummy.scale.setScalar(mix * (index === 0 ? 1.35 : 0.86))
+      dummy.updateMatrix()
+      mesh.current.setMatrixAt(index, dummy.matrix)
+    }
+
+    mesh.current.visible = !reducedMotion && mix > 0.08
+    mesh.current.instanceMatrix.needsUpdate = true
+    material.current.opacity = mix * 0.72
+  })
+
+  return (
+    <instancedMesh ref={mesh} args={[null, null, cometCount]} frustumCulled={false}>
+      <coneGeometry args={[0.045, 0.72, 6, 1, true]} />
+      <meshBasicMaterial
+        ref={material}
+        color="#9ef3ff"
+        transparent
+        opacity={0}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+        depthTest={false}
+      />
+    </instancedMesh>
+  )
+}
+
 function SurfacePoints({ globeProgress, heroProgress }) {
   const material = useRef(null)
   const geometry = useMemo(() => {
@@ -338,7 +392,75 @@ function GlowSprite({ globeProgress, heroProgress }) {
   )
 }
 
-export default function GlobalGlobe({ globeProgress, heroProgress, reducedMotion, congestion, distance, loss }) {
+function IgnitionBeacon({ globeProgress, heroProgress, reducedMotion, burstKey }) {
+  const group = useRef(null)
+  const ringOne = useRef(null)
+  const ringTwo = useRef(null)
+  const core = useRef(null)
+  const lastBurst = useRef(burstKey)
+  const burstStart = useRef(-10)
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 256
+    canvas.height = 256
+    const context = canvas.getContext('2d')
+    context.clearRect(0, 0, 256, 256)
+    context.strokeStyle = 'rgba(172, 247, 255, .95)'
+    context.lineWidth = 4
+    context.shadowColor = '#48e1ff'
+    context.shadowBlur = 16
+    context.beginPath()
+    context.arc(128, 128, 82, 0, Math.PI * 2)
+    context.stroke()
+    context.lineWidth = 1.5
+    context.globalAlpha = 0.58
+    context.beginPath()
+    context.arc(128, 128, 108, 0, Math.PI * 2)
+    context.stroke()
+    const result = new THREE.CanvasTexture(canvas)
+    result.colorSpace = THREE.SRGBColorSpace
+    return result
+  }, [])
+
+  useEffect(() => () => texture.dispose(), [texture])
+
+  useFrame(({ clock }) => {
+    if (!group.current || !ringOne.current || !ringTwo.current || !core.current) return
+    if (lastBurst.current !== burstKey) {
+      lastBurst.current = burstKey
+      burstStart.current = clock.elapsedTime
+    }
+    const mix = Math.max(getHeroMix(heroProgress?.get?.() ?? 0), getGlobeMix(globeProgress?.get?.() ?? 0))
+    const age = clock.elapsedTime - burstStart.current
+    const burst = reducedMotion || age < 0 || age > 0.92 ? 0 : Math.sin((age / 0.92) * Math.PI)
+    const breathe = reducedMotion ? 0.45 : 0.5 + Math.sin(clock.elapsedTime * 2.5) * 0.16
+
+    group.current.visible = mix > 0.02
+    ringOne.current.scale.setScalar(0.55 + breathe * 0.18 + burst * 1.35)
+    ringTwo.current.scale.setScalar(0.82 + breathe * 0.26 + burst * 2.1)
+    ringOne.current.material.opacity = mix * (0.34 + burst * 0.58)
+    ringTwo.current.material.opacity = mix * (0.13 + burst * 0.34)
+    core.current.scale.setScalar(0.82 + breathe * 0.2 + burst * 0.9)
+    core.current.material.opacity = mix * (0.82 + burst * 0.18)
+  })
+
+  return (
+    <group ref={group} position={[-0.92, -0.08, GLOBE_RADIUS + 0.08]}>
+      <sprite ref={ringOne}>
+        <spriteMaterial map={texture} color="#a9f7ff" transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
+      </sprite>
+      <sprite ref={ringTwo}>
+        <spriteMaterial map={texture} color="#36d8ff" transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
+      </sprite>
+      <mesh ref={core}>
+        <sphereGeometry args={[0.095, 18, 18]} />
+        <meshBasicMaterial color="#ffffff" transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
+      </mesh>
+    </group>
+  )
+}
+
+export default function GlobalGlobe({ globeProgress, heroProgress, reducedMotion, congestion, distance, loss, burstKey }) {
   const group = useRef(null)
   const globeMaterial = useRef(null)
   const atmosphereMaterial = useRef(null)
@@ -349,9 +471,17 @@ export default function GlobalGlobe({ globeProgress, heroProgress, reducedMotion
   const atmosphereUniforms = useMemo(() => ({ uAlpha: { value: 0 } }), [])
   const positionTarget = useMemo(() => new THREE.Vector3(), [])
   const scaleTarget = useMemo(() => new THREE.Vector3(), [])
+  const introStart = useRef(null)
+  const lastBurst = useRef(burstKey)
+  const burstStart = useRef(-10)
 
   useFrame(({ clock }, delta) => {
     if (!group.current) return
+    if (introStart.current === null) introStart.current = clock.elapsedTime
+    if (lastBurst.current !== burstKey) {
+      lastBurst.current = burstKey
+      burstStart.current = clock.elapsedTime
+    }
     const replyProgress = globeProgress?.get?.() ?? 0
     const heroMix = getHeroMix(heroProgress?.get?.() ?? 0)
     const replyMix = getGlobeMix(replyProgress)
@@ -362,6 +492,9 @@ export default function GlobalGlobe({ globeProgress, heroProgress, reducedMotion
     const reveal = THREE.MathUtils.smoothstep(progress, 0.02, 0.28)
     const exitDrift = THREE.MathUtils.smoothstep(progress, 0.74, 0.98)
     const baseScale = mobile ? 0.62 : landing ? 1.04 : 1
+    const intro = reducedMotion ? 1 : THREE.MathUtils.smoothstep(clock.elapsedTime - introStart.current, 0.05, 0.92)
+    const burstAge = clock.elapsedTime - burstStart.current
+    const burst = reducedMotion || burstAge < 0 || burstAge > 0.86 ? 0 : Math.sin((burstAge / 0.86) * Math.PI)
 
     group.current.visible = mix > 0.002
     positionTarget.set(
@@ -370,7 +503,7 @@ export default function GlobalGlobe({ globeProgress, heroProgress, reducedMotion
       -0.25 + reveal * 0.24,
     )
     group.current.position.lerp(positionTarget, Math.min(1, delta * 4.2))
-    scaleTarget.setScalar(baseScale * mix * (0.72 + reveal * 0.3 + exitDrift * 0.06))
+    scaleTarget.setScalar(baseScale * mix * intro * (0.72 + reveal * 0.3 + exitDrift * 0.06) * (1 + burst * 0.055))
     group.current.scale.lerp(scaleTarget, Math.min(1, delta * 4.8))
 
     if (!reducedMotion) {
@@ -381,15 +514,16 @@ export default function GlobalGlobe({ globeProgress, heroProgress, reducedMotion
       group.current.rotation.set(0.11, -0.38, -0.04)
     }
 
-    globeUniforms.uAlpha.value = mix
+    globeUniforms.uAlpha.value = mix * intro
     globeUniforms.uTime.value = reducedMotion ? 0 : clock.elapsedTime
-    atmosphereUniforms.uAlpha.value = mix
-    if (wireMaterial.current) wireMaterial.current.opacity = mix * (landing ? 0.018 : 0.032)
+    atmosphereUniforms.uAlpha.value = mix * intro * (1 + burst * 0.38)
+    if (wireMaterial.current) wireMaterial.current.opacity = mix * intro * (landing ? 0.018 : 0.032)
   })
 
   return (
     <group ref={group} visible={false}>
       <GlowSprite globeProgress={globeProgress} heroProgress={heroProgress} />
+      <IgnitionBeacon globeProgress={globeProgress} heroProgress={heroProgress} reducedMotion={reducedMotion} burstKey={burstKey} />
       <mesh>
         <sphereGeometry args={[GLOBE_RADIUS, 96, 96]} />
         <shaderMaterial
@@ -446,6 +580,14 @@ export default function GlobalGlobe({ globeProgress, heroProgress, reducedMotion
         congestion={congestion}
         distance={distance}
         loss={loss}
+      />
+      <CometPackets
+        curves={curves}
+        globeProgress={globeProgress}
+        heroProgress={heroProgress}
+        reducedMotion={reducedMotion}
+        congestion={congestion}
+        distance={distance}
       />
       <CityNodes globeProgress={globeProgress} heroProgress={heroProgress} />
     </group>

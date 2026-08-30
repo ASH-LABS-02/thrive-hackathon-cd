@@ -6,10 +6,12 @@ An interactive 3D scrollytelling website that makes internet data visible. Follo
 
 - Eight cinematic, full-viewport story chapters
 - Procedural 3D globe landing and global reply sequence with live packet routes
+- Click-triggered ignition shockwave, tapered packet comets, and globe impact pulse
+- Cinematic reassembly payoff that closes the journey at the destination
 - Real-time WebGL packet stream built with React Three Fiber
 - Instanced packet rendering for smoother animation with fewer frame callbacks
 - Scroll-linked 3D camera choreography and velocity-reactive packet motion
-- Per-chapter parallax, depth sweeps, word reveals, and reversible scene transitions
+- Per-chapter parallax, depth sweeps, travelling route sparks, word reveals, and reversible scene transitions
 - Interactive congestion, distance, and packet-loss simulation
 - Optional synthesized ambient soundscape
 - Scroll, navigation, keyboard, reduced-motion, and mobile support

@@ -5,6 +5,47 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { chapters } from './data.js'
 
 const JourneyCanvas = lazy(() => import('./JourneyCanvas.jsx'))
+const ARRIVAL_FRAGMENTS = [
+  { x: -190, y: -118, delay: 0 },
+  { x: -68, y: -176, delay: 0.06 },
+  { x: 86, y: -162, delay: 0.12 },
+  { x: 178, y: -72, delay: 0.18 },
+  { x: 188, y: 82, delay: 0.24 },
+  { x: 72, y: 170, delay: 0.3 },
+  { x: -86, y: 158, delay: 0.36 },
+  { x: -178, y: 66, delay: 0.42 },
+]
+
+function ArrivalPayoff() {
+  return (
+    <div className="arrival-payoff" aria-hidden="true">
+      <div className="arrival-core"><i /><i /><i /><b /></div>
+      {ARRIVAL_FRAGMENTS.map((fragment, index) => (
+        <span
+          className="arrival-fragment"
+          key={index}
+          style={{ '--fragment-x': `${fragment.x}px`, '--fragment-y': `${fragment.y}px`, '--fragment-delay': `${fragment.delay}s` }}
+        />
+      ))}
+    </div>
+  )
+}
+
+function SignalFlash({ burstKey }) {
+  if (burstKey === 0) return null
+  return (
+    <motion.div
+      key={burstKey}
+      className="signal-flash"
+      initial={{ opacity: 0, scale: 0.2 }}
+      animate={{ opacity: [0, 0.92, 0.38, 0], scale: [0.2, 0.72, 1.35, 2.1] }}
+      transition={{ duration: 0.82, times: [0, 0.13, 0.48, 1], ease: [0.16, 1, 0.3, 1] }}
+      aria-hidden="true"
+    >
+      <i /><i />
+    </motion.div>
+  )
+}
 
 function useSoundscape(enabled) {
   const audioRef = useRef(null)
@@ -101,7 +142,7 @@ function AnimatedTitle({ children, active, as: Heading = 'h2' }) {
   )
 }
 
-function Chapter({ chapter, position, active, onEnter }) {
+function Chapter({ chapter, position, active, onEnter, onLaunch }) {
   const ref = useRef(null)
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] })
   const imageY = useTransform(scrollYProgress, [0, 1], ['-5%', '5%'])
@@ -147,6 +188,7 @@ function Chapter({ chapter, position, active, onEnter }) {
       <motion.div className="chapter-edge" style={{ opacity: edgeOpacity }} />
       <motion.div className="chapter-scan" style={{ x: scanX, opacity: scanOpacity }} />
       <motion.div className="chapter-number-ghost" style={{ y: ghostY, rotate: ghostRotate }} aria-hidden="true">{chapter.index}</motion.div>
+      {isArrival ? <ArrivalPayoff /> : null}
       <motion.div
         className="chapter-copy"
         style={{ opacity: copyOpacity, x: copyX, y: copyY, scale: copyScale }}
@@ -158,7 +200,7 @@ function Chapter({ chapter, position, active, onEnter }) {
         {!isHero && <motion.p className="chapter-detail" initial={false} animate={active ? { opacity: 1, y: 0 } : { opacity: 0, y: 18 }} transition={{ duration: .54, delay: active ? .16 : 0 }}>{chapter.detail}</motion.p>}
         <motion.div className="chapter-fact" initial={false} animate={active ? { opacity: 1, x: 0 } : { opacity: 0, x: chapter.align === 'right' ? 20 : -20 }} transition={{ duration: .5, delay: active ? .2 : 0 }}><span className="pulse-dot" />{chapter.fact}</motion.div>
         {isHero && (
-          <button className="begin-button" onClick={() => document.querySelector('#home')?.scrollIntoView({ behavior: 'smooth' })}>
+          <button className="begin-button" onClick={onLaunch}>
             <span>Begin the journey</span><ArrowDown size={18} />
           </button>
         )}
@@ -338,6 +380,8 @@ export default function App() {
   const [loss, setLoss] = useState(12)
   const [loadProgress, setLoadProgress] = useState(0)
   const [ready, setReady] = useState(false)
+  const [burstKey, setBurstKey] = useState(0)
+  const launchTimerRef = useRef(null)
   const { scrollYProgress } = useScroll()
   const { scrollYProgress: globeProgress } = useScroll({
     target: globeSectionRef,
@@ -405,12 +449,22 @@ export default function App() {
     return () => window.cancelAnimationFrame(frame)
   }, [ready])
 
+  useEffect(() => () => window.clearTimeout(launchTimerRef.current), [])
+
   const handleEnter = useCallback((index) => {
     setActive((previous) => {
       if (previous !== index) playCue()
       return index
     })
   }, [playCue])
+
+  const handleLaunch = useCallback(() => {
+    window.clearTimeout(launchTimerRef.current)
+    setBurstKey((value) => value + 1)
+    launchTimerRef.current = window.setTimeout(() => {
+      document.querySelector('#home')?.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth' })
+    }, prefersReducedMotion ? 0 : 440)
+  }, [prefersReducedMotion])
 
   const activeLabel = useMemo(() => chapters[active]?.label ?? 'The send', [active])
   const activeChapter = chapters[active] ?? chapters[0]
@@ -421,6 +475,7 @@ export default function App() {
       <a className="skip-link" href="#main-content">Skip to the story</a>
       <AnimatePresence>{!ready && <LoadingScreen progress={loadProgress} />}</AnimatePresence>
       <motion.div className="scroll-progress" style={{ scaleX }} />
+      <AnimatePresence><SignalFlash burstKey={burstKey} /></AnimatePresence>
       <motion.div className="scroll-aurora" style={{ y: ambientY, rotate: ambientRotate }} aria-hidden="true" />
       <div className="site-grain" aria-hidden="true" />
       <header className="site-header">
@@ -480,12 +535,14 @@ export default function App() {
           reducedMotion={Boolean(prefersReducedMotion || paused)}
           scrollProgress={scrollYProgress}
           scrollVelocity={scrollVelocity}
+          burstKey={burstKey}
+          arrivalActive={activeChapter.id === 'arrival'}
         />
       </Suspense>
       <GlobeOverlay chapter={chapters[6]} progress={globeProgress} active={globeActive} />
       <main id="main-content">
         {chapters.slice(0, 6).map((chapter, index) => (
-          <Chapter key={chapter.id} chapter={chapter} position={index} active={active === index} onEnter={handleEnter} />
+          <Chapter key={chapter.id} chapter={chapter} position={index} active={active === index} onEnter={handleEnter} onLaunch={handleLaunch} />
         ))}
         <RouteLab
           congestion={congestion}

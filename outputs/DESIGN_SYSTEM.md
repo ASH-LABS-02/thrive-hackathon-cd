@@ -3,6 +3,7 @@
 ## Accepted concept references
 
 - `outputs/GLOBE_SECTION_CONCEPT.png` — procedural globe landing and reply composition
+- `outputs/WOW_IMPACT_CONCEPT.png` — ignition, shockwave, comet, and editorial typography direction
 - `public/assets/concepts/01-send.jpg` — hero and packetization
 - `public/assets/concepts/02-city.jpg` — city network
 - `public/assets/concepts/03-ocean.jpg` — undersea fiber
@@ -21,10 +22,11 @@
 - Amber: `#ffb55e`
 - Border: `rgba(151, 221, 239, 0.18)`
 - Panel: `rgba(3, 13, 19, 0.72)`
-- Display type: Manrope/Inter-style geometric sans-serif
+- Display type: Newsreader editorial serif for the landing, reply, and arrival bookends
+- Chapter display type: Manrope geometric sans-serif
 - Body/UI type: Inter/system sans-serif
 - Radii: 18px media, 999px circular/compact controls
-- Motion: 160ms UI, 480–580ms section reveal, slow continuous 3D drift
+- Motion: 160ms UI, 480–580ms section reveal, slow continuous 3D drift, 820ms launch shockwave
 
 ## Layout rules
 
@@ -33,6 +35,7 @@
 - Avoid card grids; use open composition and a single translucent information surface only where interaction requires it.
 - Navigation remains quiet: title, chapters, pause, sound, replay.
 - Globe chapters use a wide sphere/copy split on desktop and a stacked sphere/copy handoff on mobile.
+- High-energy effects stay concentrated at launch and arrival; the middle chapters remain restrained for contrast.
 - All text, controls, metrics, and diagrams are code-native.
 - Generated imagery receives edge fades only; no color wash overlay.
 
@@ -49,6 +52,7 @@
 - Circular icon controls with hairline border
 - Chapter marker: two-digit index plus thin rule
 - Large editorial chapter heading
+- Source beacon, shockwave, tapered packet comets, and arrival reassembly core
 - One compact glass control panel for Route Lab
 - Sliders with cyan progress and amber warning state
 - Minimal footer/replay ending
