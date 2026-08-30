@@ -6,6 +6,8 @@ An interactive 3D scrollytelling website that makes internet data visible. Follo
 
 - Seven cinematic, full-viewport story chapters
 - Real-time WebGL packet stream built with React Three Fiber
+- Scroll-linked 3D camera choreography and velocity-reactive packet motion
+- Per-chapter parallax, depth sweeps, word reveals, and reversible scene transitions
 - Interactive congestion, distance, and packet-loss simulation
 - Optional synthesized ambient soundscape
 - Scroll, navigation, keyboard, reduced-motion, and mobile support

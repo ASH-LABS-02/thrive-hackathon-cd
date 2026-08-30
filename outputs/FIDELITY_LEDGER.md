@@ -33,6 +33,8 @@ No unapproved hero eyebrow, badge, metric panel, or invented CTA was added.
 - Lazy-loaded the WebGL engine, reducing the main gzip JavaScript bundle to approximately 112 KB.
 - Optimized chapter artwork from approximately 10.6 MB to approximately 1 MB total.
 - Added a directional canvas mask so live packets do not compromise text readability.
+- Added reversible chapter-local scroll timelines, word-level title reveals, image depth/parallax, transition light sweeps, and velocity-reactive WebGL camera motion.
+- Fixed mobile overflow caused by off-screen animation states while preserving the desktop transition depth.
 - Corrected range input propagation and verified congestion changes from 36% to 90%, latency from 78 ms to 103 ms, and active routes from 2 to 3.
 - Verified synthesized sound changes the accessible control from `Enable sound` to `Mute sound`.
 
