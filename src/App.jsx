@@ -73,7 +73,7 @@ function LoadingScreen({ progress }) {
   )
 }
 
-function AnimatedTitle({ children }) {
+function AnimatedTitle({ children, active }) {
   const words = children.split(' ')
 
   return (
@@ -81,10 +81,9 @@ function AnimatedTitle({ children }) {
       {words.map((word, index) => (
         <span className="title-word" aria-hidden="true" key={`${word}-${index}`}>
           <motion.span
-            initial={{ y: '112%', rotateX: -42, opacity: 0 }}
-            whileInView={{ y: 0, rotateX: 0, opacity: 1 }}
-            viewport={{ amount: 0.72, once: false }}
-            transition={{ duration: 0.72, delay: index * 0.055, ease: [0.16, 1, 0.3, 1] }}
+            initial={false}
+            animate={active ? { y: 0, rotateX: 0, opacity: 1 } : { y: '112%', rotateX: -42, opacity: 0 }}
+            transition={{ duration: 0.72, delay: active ? index * 0.055 : 0, ease: [0.16, 1, 0.3, 1] }}
           >
             {word}
           </motion.span>
@@ -149,7 +148,7 @@ function Chapter({ chapter, position, active, onEnter }) {
       >
         <div className="chapter-marker"><span>{chapter.index}</span><i /></div>
         <motion.p className="chapter-label" initial={{ opacity: 0, letterSpacing: '.34em' }} whileInView={{ opacity: 1, letterSpacing: '.2em' }} viewport={{ amount: .7, once: false }} transition={{ duration: .7 }}>{chapter.label}</motion.p>
-        <AnimatedTitle>{chapter.title}</AnimatedTitle>
+        <AnimatedTitle active={active}>{chapter.title}</AnimatedTitle>
         <motion.p className="chapter-lead" initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ amount: .5, once: false }} transition={{ duration: .7, delay: .16 }}>{chapter.copy}</motion.p>
         {!isHero && <motion.p className="chapter-detail" initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ amount: .5, once: false }} transition={{ duration: .7, delay: .24 }}>{chapter.detail}</motion.p>}
         <motion.div className="chapter-fact" initial={{ opacity: 0, x: chapter.align === 'right' ? 20 : -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ amount: .7, once: false }} transition={{ duration: .65, delay: .3 }}><span className="pulse-dot" />{chapter.fact}</motion.div>
