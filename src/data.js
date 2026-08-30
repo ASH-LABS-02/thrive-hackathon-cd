@@ -9,6 +9,7 @@ export const chapters = [
     fact: 'The whole journey begins in less time than a blink.',
     image: '/assets/concepts/01-send.jpg',
     align: 'left',
+    layout: 'hero',
   },
   {
     id: 'home',
@@ -20,6 +21,7 @@ export const chapters = [
     fact: 'First hop · approximately 3 ms',
     image: '/assets/concepts/01-send.jpg',
     align: 'right',
+    layout: 'edge',
   },
   {
     id: 'city',
@@ -31,6 +33,7 @@ export const chapters = [
     fact: 'Local network · approximately 12 ms',
     image: '/assets/concepts/02-city.jpg',
     align: 'right',
+    layout: 'lower',
   },
   {
     id: 'ocean',
@@ -42,6 +45,7 @@ export const chapters = [
     fact: 'Ocean crossing · approximately 48 ms',
     image: '/assets/concepts/03-ocean.jpg',
     align: 'left',
+    layout: 'upper',
   },
   {
     id: 'machine',
@@ -49,10 +53,11 @@ export const chapters = [
     label: 'The data center',
     title: 'Inside the machine.',
     copy: 'In a data center, switches direct the packets while servers process the request. Encryption keeps the message unreadable along the way.',
-    detail: 'The server prepares a response, divides it into packets of its own, and sends them back into the network.',
+    detail: 'Encryption hides the contents while routers still read the addressing metadata needed for delivery. The server prepares a response and sends fresh packets back into the network.',
     fact: 'Process and respond · approximately 21 ms',
     image: '/assets/concepts/04-datacenter.jpg',
     align: 'left',
+    layout: 'edge',
   },
   {
     id: 'routing',
@@ -64,6 +69,7 @@ export const chapters = [
     fact: 'Routing is adaptive, not predetermined.',
     image: '/assets/concepts/05-routing.jpg',
     align: 'left',
+    layout: 'lower',
   },
   {
     id: 'reply',
@@ -74,6 +80,7 @@ export const chapters = [
     detail: 'A fresh stream of encrypted packets leaves the server. Each route is independent, but every fragment is aimed at the same final address: you.',
     fact: 'One message · many routes · one destination',
     kind: 'globe',
+    layout: 'globe',
   },
   {
     id: 'arrival',
@@ -85,5 +92,6 @@ export const chapters = [
     fact: 'So did the message.',
     image: '/assets/concepts/06-arrival.jpg',
     align: 'left',
+    layout: 'arrival',
   },
 ]

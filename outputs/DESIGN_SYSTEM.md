@@ -2,6 +2,7 @@
 
 ## Accepted concept references
 
+- `outputs/GLOBE_SECTION_CONCEPT.png` — procedural globe landing and reply composition
 - `public/assets/concepts/01-send.jpg` — hero and packetization
 - `public/assets/concepts/02-city.jpg` — city network
 - `public/assets/concepts/03-ocean.jpg` — undersea fiber
@@ -23,14 +24,15 @@
 - Display type: Manrope/Inter-style geometric sans-serif
 - Body/UI type: Inter/system sans-serif
 - Radii: 18px media, 999px circular/compact controls
-- Motion: 160ms UI, 700ms section reveal, slow continuous 3D drift
+- Motion: 160ms UI, 480–580ms section reveal, slow continuous 3D drift
 
 ## Layout rules
 
 - Full-viewport chapter bands with a single dominant image/3D moment.
 - Text occupies at most 34rem and alternates sides according to available image space.
 - Avoid card grids; use open composition and a single translucent information surface only where interaction requires it.
-- Navigation remains quiet: title, chapters, sound, replay.
+- Navigation remains quiet: title, chapters, pause, sound, replay.
+- Globe chapters use a wide sphere/copy split on desktop and a stacked sphere/copy handoff on mobile.
 - All text, controls, metrics, and diagrams are code-native.
 - Generated imagery receives edge fades only; no color wash overlay.
 

@@ -1,15 +1,16 @@
 # Fidelity Ledger
 
-Reference inspected: `public/assets/concepts/01-send.jpg` at its native 1680×945 composition.  
-Implementation inspected from `outputs/WEBSITE_PREVIEW.png` at the browser’s 1264×720 viewport.
+References inspected: `outputs/GLOBE_SECTION_CONCEPT.png` and the original globe screenshots supplied in the brief.
+Implementation inspected from `outputs/WEBSITE_PREVIEW.png`, `outputs/GLOBE_REPLY_PREVIEW.png`, and `outputs/MOBILE_PREVIEW.png`.
 
 | Comparison point | Concept evidence | Render evidence | Result |
 |---|---|---|---|
-| First viewport composition | Dark negative space on the left; phone, hand, and packet arc on the right | Headline and CTA sit in the left negative space; hero subject remains dominant on the right | Matched |
-| Palette | Graphite black, cyan signal, restrained amber bedside light | Exact black/cyan/amber relationship retained without a color wash | Matched |
-| Hero copy | Concept intentionally reserves space for code-native copy | “Made it safely.”, supporting line, fact, and Begin control remain readable and native | Matched |
-| Asset treatment | Full-bleed cinematic image with no tint | Full-bleed background uses edge fades only; no overlay wash | Matched |
-| Motion language | Packet arc, pulse, and slow camera implication | Live WebGL packet cubes, route curves, particles, and chapter scroll transitions extend the same motif | Matched |
+| First viewport composition | Luminous globe, open negative space, visible global routes | Headline and CTA occupy the left; the procedural globe anchors the right | Matched with intentional editorial reversal |
+| Reply composition | Globe on the left with a focused story panel on the right | Direct-linked reply view resolves to the same left-globe/right-panel hierarchy | Matched |
+| Palette | Graphite black with icy cyan energy | Deep navy-black, cyan atmosphere, bright packet nodes, restrained white type | Matched |
+| Hero copy | Concept leaves room for code-native narrative copy | “Made it safely.”, supporting line, fact, and Begin control remain readable and native | Matched |
+| Asset treatment | Artistic globe with orbiting signal paths | Fully procedural shader globe, arcs, particles, city nodes, and instanced packets | Intentional interactive adaptation |
+| Motion language | Orbiting data nodes and slow planetary drift | Scroll-linked globe morph, accelerated copy reveals, live routes, and reversible chapter transitions | Matched |
 | Navigation and controls | Quiet chrome and circular control treatment | Minimal centered nav plus circular pause/sound controls | Matched |
 | Container model | Open editorial canvas, no card grid | Chapters remain open/full-bleed; only the functional Route Lab uses one glass panel | Matched |
 | Responsive behavior | Desktop-first spatial composition | 390×844 test stacks copy near the bottom, removes overflow, hides nonessential navigation, and reduces 3D interference | Intentional responsive adaptation |
@@ -23,6 +24,7 @@ Allowed and present:
 - `Begin the journey`
 - `Journey`
 - `Route lab`
+- `The reply`
 - `How it works`
 
 No unapproved hero eyebrow, badge, metric panel, or invented CTA was added.
@@ -34,8 +36,12 @@ No unapproved hero eyebrow, badge, metric panel, or invented CTA was added.
 - Optimized chapter artwork from approximately 10.6 MB to approximately 1 MB total.
 - Added a directional canvas mask so live packets do not compromise text readability.
 - Added reversible chapter-local scroll timelines, word-level title reveals, image depth/parallax, transition light sweeps, and velocity-reactive WebGL camera motion.
+- Replaced the former landing image with the procedural globe and reused it for the global reply chapter.
+- Shortened the globe scroll span and reveal timings so the handoff reads faster without becoming abrupt.
+- Replaced individual packet frame loops with instanced packet streams and removed dark instance-color artifacts.
+- Added reliable deep-link positioning for `#reply` and synchronized the reply panel with the globe transition.
 - Fixed mobile overflow caused by off-screen animation states while preserving the desktop transition depth.
 - Corrected range input propagation and verified congestion changes from 36% to 90%, latency from 78 ms to 103 ms, and active routes from 2 to 3.
 - Verified synthesized sound changes the accessible control from `Enable sound` to `Mute sound`.
 
-No material visual mismatch remains in the verified hero, Route Lab, or mobile layouts.
+No material visual mismatch remains in the verified hero, globe reply, Route Lab, or mobile layouts.

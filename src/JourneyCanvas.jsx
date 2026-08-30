@@ -17,6 +17,8 @@ function RouteLine({ curve, color = '#30d9ff', opacity = 0.46 }) {
     return new THREE.BufferGeometry().setFromPoints(points)
   }, [curve])
 
+  useEffect(() => () => geometry.dispose(), [geometry])
+
   return (
     <line geometry={geometry}>
       <lineBasicMaterial color={color} transparent opacity={opacity} blending={THREE.AdditiveBlending} />
@@ -24,31 +26,50 @@ function RouteLine({ curve, color = '#30d9ff', opacity = 0.46 }) {
   )
 }
 
-function Packet({ curve, offset, speed, distance, lost, reducedMotion, scrollProgress, scrollVelocity }) {
-  const ref = useRef()
-  const position = useRef(new THREE.Vector3())
-  const tangent = useRef(new THREE.Vector3())
-  const lookTarget = useRef(new THREE.Vector3())
+function PacketStream({ curves, packetCount, congestion, distance, loss, reducedMotion, scrollProgress, scrollVelocity }) {
+  const mesh = useRef(null)
+  const dummy = useMemo(() => new THREE.Object3D(), [])
+  const position = useMemo(() => new THREE.Vector3(), [])
+  const tangent = useMemo(() => new THREE.Vector3(), [])
+  const lookTarget = useMemo(() => new THREE.Vector3(), [])
+
+  useEffect(() => {
+    if (mesh.current) mesh.current.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
+  }, [packetCount])
+
   useFrame(({ clock }) => {
-    if (!ref.current) return
+    if (!mesh.current) return
     const progress = scrollProgress?.get?.() ?? 0
     const velocity = Math.min(Math.abs(scrollVelocity?.get?.() ?? 0), 1.4)
     const distanceDrag = THREE.MathUtils.lerp(1.12, .74, distance / 100)
-    const t = reducedMotion ? offset : (clock.elapsedTime * (speed + velocity * .018) * distanceDrag + offset + progress * .72) % 1
-    curve.getPointAt(t, position.current)
-    curve.getTangentAt(t, tangent.current)
-    ref.current.position.copy(position.current)
-    lookTarget.current.copy(position.current).add(tangent.current)
-    ref.current.lookAt(lookTarget.current)
-    let baseScale = 1
-    if (lost && t > .48 && t < .64) baseScale = 1 - THREE.MathUtils.smoothstep(t, .48, .64)
-    if (lost && t >= .64 && t < .79) baseScale = THREE.MathUtils.smoothstep(t, .64, .79)
-    ref.current.scale.setScalar(baseScale * (1 + velocity * .22))
-    ref.current.rotation.z += reducedMotion ? 0 : .012 + velocity * .018
+    const speed = 0.055 + (100 - congestion) * 0.00038
+
+    for (let index = 0; index < packetCount; index += 1) {
+      const pathIndex = congestion > 65 && index % 3 ? (index % 2) + 1 : 0
+      const curve = curves[pathIndex]
+      const offset = index / packetCount
+      const t = reducedMotion ? offset : (clock.elapsedTime * (speed + velocity * .018) * distanceDrag + offset + progress * .72) % 1
+      curve.getPointAt(t, position)
+      curve.getTangentAt(t, tangent)
+      lookTarget.copy(position).add(tangent)
+      let packetScale = 1
+      const lost = loss > 38 && index === 5
+      if (lost && t > .48 && t < .64) packetScale = 1 - THREE.MathUtils.smoothstep(t, .48, .64)
+      if (lost && t >= .64 && t < .79) packetScale = THREE.MathUtils.smoothstep(t, .64, .79)
+
+      dummy.position.copy(position)
+      dummy.lookAt(lookTarget)
+      if (!reducedMotion) dummy.rotateZ(clock.elapsedTime * .3 + index * .17)
+      dummy.scale.setScalar(packetScale * (1 + velocity * .22))
+      dummy.updateMatrix()
+      mesh.current.setMatrixAt(index, dummy.matrix)
+    }
+
+    mesh.current.instanceMatrix.needsUpdate = true
   })
 
   return (
-    <mesh ref={ref}>
+    <instancedMesh ref={mesh} args={[null, null, packetCount]} frustumCulled={false}>
       <boxGeometry args={[0.17, 0.17, 0.17]} />
       <meshBasicMaterial
         color="#22d8ff"
@@ -57,7 +78,7 @@ function Packet({ curve, offset, speed, distance, lost, reducedMotion, scrollPro
         blending={THREE.AdditiveBlending}
         depthWrite={false}
       />
-    </mesh>
+    </instancedMesh>
   )
 }
 
@@ -160,22 +181,16 @@ function Network({ congestion, distance, loss, reducedMotion, scrollProgress, sc
       <RouteLine curve={curves[0]} opacity={congestion > 65 ? 0.26 : 0.6} color={congestion > 65 ? '#ffb55e' : '#30d9ff'} />
       <RouteLine curve={curves[1]} opacity={0.36} />
       <RouteLine curve={curves[2]} opacity={0.24} />
-      {Array.from({ length: packetCount }, (_, index) => {
-        const pathIndex = congestion > 65 && index % 3 ? (index % 2) + 1 : 0
-        return (
-          <Packet
-            key={index}
-            curve={curves[pathIndex]}
-            offset={index / packetCount}
-            speed={0.055 + (100 - congestion) * 0.00038}
-            distance={distance}
-            lost={loss > 38 && index === 5}
-            reducedMotion={reducedMotion}
-            scrollProgress={scrollProgress}
-            scrollVelocity={scrollVelocity}
-          />
-        )
-      })}
+      <PacketStream
+        curves={curves}
+        packetCount={packetCount}
+        congestion={congestion}
+        distance={distance}
+        loss={loss}
+        reducedMotion={reducedMotion}
+        scrollProgress={scrollProgress}
+        scrollVelocity={scrollVelocity}
+      />
       <Float
         speed={reducedMotion ? 0 : 1.3}
         rotationIntensity={reducedMotion ? 0 : 0.25}
@@ -229,7 +244,7 @@ export default function JourneyCanvas({ congestion, distance, loss, globeActive,
         />
         <GlobalGlobe
           globeProgress={globeProgress}
-          heroActive={heroActive}
+          heroProgress={scrollProgress}
           reducedMotion={reducedMotion}
           congestion={congestion}
           distance={distance}

@@ -71,7 +71,7 @@ function useSoundscape(enabled) {
 
 function LoadingScreen({ progress }) {
   return (
-    <motion.div className="loader" exit={{ opacity: 0 }} transition={{ duration: 0.7 }}>
+    <motion.div className="loader" exit={{ opacity: 0 }} transition={{ duration: 0.48 }}>
       <div className="loader-mark"><span /></div>
       <p>Preparing the route</p>
       <div className="loader-track"><motion.div animate={{ width: `${progress}%` }} /></div>
@@ -90,7 +90,7 @@ function AnimatedTitle({ children, active, as: Heading = 'h2' }) {
           <motion.span
             initial={false}
             animate={active ? { y: 0, rotateX: 0, opacity: 1 } : { y: '112%', rotateX: -42, opacity: 0 }}
-            transition={{ duration: 0.72, delay: active ? index * 0.055 : 0, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.58, delay: active ? index * 0.04 : 0, ease: [0.16, 1, 0.3, 1] }}
           >
             {word}
           </motion.span>
@@ -125,9 +125,9 @@ function Chapter({ chapter, position, active, onEnter }) {
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && entry.intersectionRatio > 0.45) onEnter(position)
+        if (entry.isIntersecting && entry.intersectionRatio > 0.28) onEnter(position)
       },
-      { threshold: [0.45, 0.7] },
+      { threshold: [0.28, 0.52], rootMargin: '-8% 0px -8% 0px' },
     )
     if (ref.current) observer.observe(ref.current)
     return () => observer.disconnect()
@@ -137,11 +137,9 @@ function Chapter({ chapter, position, active, onEnter }) {
   const isArrival = chapter.id === 'arrival'
 
   return (
-    <section ref={ref} id={chapter.id} className={`chapter chapter-${chapter.align} chapter-${chapter.id} ${isHero ? 'chapter-hero' : ''}`}>
+    <section ref={ref} id={chapter.id} className={`chapter chapter-${chapter.align} chapter-${chapter.id} chapter-layout-${chapter.layout ?? 'edge'} ${active ? 'chapter-active' : ''} ${isHero ? 'chapter-hero' : ''}`}>
       <motion.div
         className="chapter-image"
-        animate={active ? { filter: 'saturate(1.06) brightness(1)' } : { filter: 'saturate(.84) brightness(.72)' }}
-        transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
         style={{ backgroundImage: isHero ? 'none' : `url(${chapter.image})`, y: imageY, scale: imageScale, opacity: imageOpacity }}
         role="img"
         aria-label={`${chapter.label}: ${chapter.title}`}
@@ -154,11 +152,11 @@ function Chapter({ chapter, position, active, onEnter }) {
         style={{ opacity: copyOpacity, x: copyX, y: copyY, scale: copyScale }}
       >
         <div className="chapter-marker"><span>{chapter.index}</span><i /></div>
-        <motion.p className="chapter-label" initial={{ opacity: 0, letterSpacing: '.34em' }} whileInView={{ opacity: 1, letterSpacing: '.2em' }} viewport={{ amount: .7, once: false }} transition={{ duration: .7 }}>{chapter.label}</motion.p>
+        <motion.p className="chapter-label" initial={false} animate={active ? { opacity: 1, letterSpacing: '.2em' } : { opacity: 0, letterSpacing: '.3em' }} transition={{ duration: .48 }}>{chapter.label}</motion.p>
         <AnimatedTitle active={active} as={isHero ? 'h1' : 'h2'}>{chapter.title}</AnimatedTitle>
-        <motion.p className="chapter-lead" initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ amount: .5, once: false }} transition={{ duration: .7, delay: .16 }}>{chapter.copy}</motion.p>
-        {!isHero && <motion.p className="chapter-detail" initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ amount: .5, once: false }} transition={{ duration: .7, delay: .24 }}>{chapter.detail}</motion.p>}
-        <motion.div className="chapter-fact" initial={{ opacity: 0, x: chapter.align === 'right' ? 20 : -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ amount: .7, once: false }} transition={{ duration: .65, delay: .3 }}><span className="pulse-dot" />{chapter.fact}</motion.div>
+        <motion.p className="chapter-lead" initial={false} animate={active ? { opacity: 1, y: 0 } : { opacity: 0, y: 22 }} transition={{ duration: .54, delay: active ? .1 : 0 }}>{chapter.copy}</motion.p>
+        {!isHero && <motion.p className="chapter-detail" initial={false} animate={active ? { opacity: 1, y: 0 } : { opacity: 0, y: 18 }} transition={{ duration: .54, delay: active ? .16 : 0 }}>{chapter.detail}</motion.p>}
+        <motion.div className="chapter-fact" initial={false} animate={active ? { opacity: 1, x: 0 } : { opacity: 0, x: chapter.align === 'right' ? 20 : -20 }} transition={{ duration: .5, delay: active ? .2 : 0 }}><span className="pulse-dot" />{chapter.fact}</motion.div>
         {isHero && (
           <button className="begin-button" onClick={() => document.querySelector('#home')?.scrollIntoView({ behavior: 'smooth' })}>
             <span>Begin the journey</span><ArrowDown size={18} />
@@ -177,17 +175,17 @@ function Chapter({ chapter, position, active, onEnter }) {
 }
 
 function GlobeOverlay({ chapter, progress, active }) {
-  const opacity = useTransform(progress, [0, 0.055, 0.88, 1], [0, 1, 1, 0])
-  const panelX = useTransform(progress, [0, 0.22, 0.76, 1], [150, 0, 0, 72])
-  const panelY = useTransform(progress, [0, 0.28, 0.76, 1], [46, 0, 0, -34])
-  const panelScale = useTransform(progress, [0, 0.25, 0.82, 1], [0.92, 1, 1, 0.97])
-  const panelRotate = useTransform(progress, [0, 0.28, 0.78, 1], [-9, 0, 0, 4])
+  const opacity = useTransform(progress, [0, 0.07, 0.88, 1], [0.78, 1, 1, 0])
+  const panelX = useTransform(progress, [0, 0.2, 0.76, 1], [42, 0, 0, 72])
+  const panelY = useTransform(progress, [0, 0.24, 0.76, 1], [16, 0, 0, -34])
+  const panelScale = useTransform(progress, [0, 0.22, 0.82, 1], [0.97, 1, 1, 0.97])
+  const panelRotate = useTransform(progress, [0, 0.24, 0.78, 1], [-3, 0, 0, 4])
   const labelsOpacity = useTransform(progress, [0.1, 0.27, 0.76, 0.9], [0, 1, 1, 0])
   const railScale = useTransform(progress, [0.05, 0.82], [0, 1])
 
   return (
     <motion.section
-      className="globe-overlay"
+      className={`globe-overlay ${active ? 'active' : ''}`}
       style={{ opacity }}
       aria-hidden={!active}
       aria-label={`${chapter.label}: ${chapter.title}`}
@@ -267,7 +265,7 @@ function RouteLab({ congestion, setCongestion, distance, setDistance, loss, setL
 
   return (
     <motion.section id="route-lab" className="route-lab" initial="hidden" whileInView="visible" viewport={{ amount: .3, once: false }}>
-      <motion.div className="route-copy" variants={{ hidden: { opacity: 0, x: -80 }, visible: { opacity: 1, x: 0, transition: { duration: .9, ease: [0.16, 1, 0.3, 1] } } }}>
+      <motion.div className="route-copy" variants={{ hidden: { opacity: 0, x: -80 }, visible: { opacity: 1, x: 0, transition: { duration: .7, ease: [0.16, 1, 0.3, 1] } } }}>
         <div className="chapter-marker"><span>LAB</span><i /></div>
         <h2>Change the invisible route.</h2>
         <p>Increase congestion, distance, or packet loss. The live 3D stream above adapts just as real networks do.</p>
@@ -277,7 +275,7 @@ function RouteLab({ congestion, setCongestion, distance, setDistance, loss, setL
           <div><strong>{loss > 38 ? 'retrying' : 'stable'}</strong><span>delivery state</span></div>
         </div>
       </motion.div>
-      <motion.div className="control-panel" variants={{ hidden: { opacity: 0, x: 90, rotateY: -8, scale: .94 }, visible: { opacity: 1, x: 0, rotateY: 0, scale: 1, transition: { duration: 1, delay: .12, ease: [0.16, 1, 0.3, 1] } } }}>
+      <motion.div className="control-panel" variants={{ hidden: { opacity: 0, x: 90, rotateY: -8, scale: .94 }, visible: { opacity: 1, x: 0, rotateY: 0, scale: 1, transition: { duration: .78, delay: .08, ease: [0.16, 1, 0.3, 1] } } }}>
         <Slider label="Congestion" value={congestion} setValue={setCongestion} low="Clear" high="Crowded" />
         <Slider label="Distance" value={distance} setValue={setDistance} low="Local" high="Global" />
         <Slider label="Packet loss" value={loss} setValue={setLoss} low="None" high="Severe" warning />
@@ -397,6 +395,15 @@ export default function App() {
       else window.clearTimeout(preloadHandle)
     }
   }, [])
+
+  useEffect(() => {
+    if (!ready || !window.location.hash) return undefined
+    const targetId = decodeURIComponent(window.location.hash.slice(1))
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(targetId)?.scrollIntoView({ block: 'start' })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [ready])
 
   const handleEnter = useCallback((index) => {
     setActive((previous) => {

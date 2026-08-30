@@ -56,18 +56,18 @@ const globeFragmentShader = /* glsl */ `
   void main() {
     vec3 p = normalize(vPosition);
     float terrain = fbm(p * 3.35 + vec3(1.7, 0.3, -0.8));
-    float land = smoothstep(0.47, 0.60, terrain + sin(p.y * 5.8) * 0.035);
+    float land = smoothstep(0.43, 0.56, terrain + sin(p.y * 5.8) * 0.035);
     float micro = fbm(p * 10.0 + 2.7) * 0.12;
     float rim = pow(1.0 - max(dot(normalize(vNormalView), vec3(0.0, 0.0, 1.0)), 0.0), 2.45);
     float pulse = 0.92 + sin(uTime * 0.42) * 0.035;
 
-    vec3 ocean = vec3(0.025, 0.16, 0.24);
-    vec3 landColor = vec3(0.19, 0.60, 0.69);
+    vec3 ocean = vec3(0.025, 0.20, 0.27);
+    vec3 landColor = vec3(0.20, 0.64, 0.72);
     vec3 color = mix(ocean, landColor, land);
     color += micro * vec3(0.08, 0.34, 0.42);
     color += rim * vec3(0.22, 0.88, 1.0) * 1.35 * pulse;
 
-    gl_FragColor = vec4(color, uAlpha * 0.96);
+    gl_FragColor = vec4(color, uAlpha);
   }
 `
 
@@ -122,7 +122,7 @@ export function getGlobeMix(progress) {
 }
 
 export function getHeroMix(progress) {
-  return 1 - THREE.MathUtils.smoothstep(progress, 0.012, 0.115)
+  return 1 - THREE.MathUtils.smoothstep(progress, 0.006, 0.078)
 }
 
 function GlobeArc({ curve, index, globeProgress, heroProgress, reducedMotion, congested }) {
@@ -172,14 +172,6 @@ function GlobePackets({ curves, globeProgress, heroProgress, reducedMotion, cong
   const dummy = useMemo(() => new THREE.Object3D(), [])
   const packetCount = congestion > 65 ? 30 : 22
 
-  useEffect(() => {
-    if (!mesh.current) return
-    for (let index = 0; index < packetCount; index += 1) {
-      mesh.current.setColorAt(index, new THREE.Color(index % 4 === 0 ? '#ffffff' : '#72ebff'))
-    }
-    mesh.current.instanceColor.needsUpdate = true
-  }, [packetCount])
-
   useFrame(({ clock }) => {
     if (!mesh.current || !material.current) return
     const replyProgress = globeProgress?.get?.() ?? 0
@@ -217,11 +209,12 @@ function GlobePackets({ curves, globeProgress, heroProgress, reducedMotion, cong
       <sphereGeometry args={[0.062, 10, 10]} />
       <meshBasicMaterial
         ref={material}
-        vertexColors
+        color="#c8f8ff"
         transparent
         opacity={0}
         blending={THREE.AdditiveBlending}
         depthWrite={false}
+        depthTest={false}
       />
     </instancedMesh>
   )
@@ -298,6 +291,7 @@ function CityNodes({ globeProgress, heroProgress }) {
             opacity={0.95}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
+            depthTest={false}
           />
         </mesh>
       ))}
@@ -390,7 +384,7 @@ export default function GlobalGlobe({ globeProgress, heroProgress, reducedMotion
     globeUniforms.uAlpha.value = mix
     globeUniforms.uTime.value = reducedMotion ? 0 : clock.elapsedTime
     atmosphereUniforms.uAlpha.value = mix
-    if (wireMaterial.current) wireMaterial.current.opacity = mix * 0.055
+    if (wireMaterial.current) wireMaterial.current.opacity = mix * (landing ? 0.018 : 0.032)
   })
 
   return (
@@ -408,7 +402,7 @@ export default function GlobalGlobe({ globeProgress, heroProgress, reducedMotion
         />
       </mesh>
       <mesh scale={1.006}>
-        <sphereGeometry args={[GLOBE_RADIUS, 42, 42]} />
+        <sphereGeometry args={[GLOBE_RADIUS, 28, 28]} />
         <meshBasicMaterial
           ref={wireMaterial}
           color="#8beaff"

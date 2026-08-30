@@ -4,8 +4,10 @@ An interactive 3D scrollytelling website that makes internet data visible. Follo
 
 ## Features
 
-- Seven cinematic, full-viewport story chapters
+- Eight cinematic, full-viewport story chapters
+- Procedural 3D globe landing and global reply sequence with live packet routes
 - Real-time WebGL packet stream built with React Three Fiber
+- Instanced packet rendering for smoother animation with fewer frame callbacks
 - Scroll-linked 3D camera choreography and velocity-reactive packet motion
 - Per-chapter parallax, depth sweeps, word reveals, and reversible scene transitions
 - Interactive congestion, distance, and packet-loss simulation
@@ -28,7 +30,7 @@ npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite.
+Open `http://127.0.0.1:5173/` (or the next port printed by Vite if that port is busy).
 
 ## Production build
 
@@ -51,6 +53,7 @@ npm run preview
 public/assets/concepts/  Generated chapter artwork
 src/App.jsx              Story structure, state, sound, and interactions
 src/JourneyCanvas.jsx    WebGL packet system
+src/GlobalGlobe.jsx      Procedural globe, global routes, and city nodes
 src/data.js              Chapter content
 src/index.css            Design system and responsive presentation
 outputs/                 Planning and design documentation
