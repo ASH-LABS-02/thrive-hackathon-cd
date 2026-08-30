@@ -1,4 +1,4 @@
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Float, Sparkles } from '@react-three/drei'
 import React from 'react'
 import { useMemo, useRef } from 'react'
@@ -23,17 +23,21 @@ function RouteLine({ curve, color = '#30d9ff', opacity = 0.46 }) {
   )
 }
 
-function Packet({ curve, offset, speed, lost, reducedMotion }) {
+function Packet({ curve, offset, speed, lost, reducedMotion, scrollProgress, scrollVelocity }) {
   const ref = useRef()
   useFrame(({ clock }) => {
     if (!ref.current) return
-    const t = reducedMotion ? offset : (clock.elapsedTime * speed + offset) % 1
+    const progress = scrollProgress?.get?.() ?? 0
+    const velocity = Math.min(Math.abs(scrollVelocity?.get?.() ?? 0), 1.4)
+    const t = reducedMotion ? offset : (clock.elapsedTime * (speed + velocity * .018) + offset + progress * .72) % 1
     const position = curve.getPointAt(t)
     const tangent = curve.getTangentAt(t)
     ref.current.position.copy(position)
     ref.current.lookAt(position.clone().add(tangent))
     const vanish = lost && t > 0.52 && t < 0.68
-    ref.current.scale.setScalar(vanish ? Math.max(0.02, (0.68 - t) * 5.8) : 1)
+    const baseScale = vanish ? Math.max(0.02, (0.68 - t) * 5.8) : 1
+    ref.current.scale.setScalar(baseScale * (1 + velocity * .22))
+    ref.current.rotation.z += reducedMotion ? 0 : .012 + velocity * .018
   })
 
   return (
@@ -50,18 +54,94 @@ function Packet({ curve, offset, speed, lost, reducedMotion }) {
   )
 }
 
-function Network({ congestion, loss, reducedMotion }) {
+function SignalCore({ scrollProgress, scrollVelocity, reducedMotion }) {
+  const core = useRef()
+  const ringA = useRef()
+  const ringB = useRef()
+  const targetScale = useRef(new THREE.Vector3(1, 1, 1))
+
+  useFrame(({ clock }, delta) => {
+    if (!core.current) return
+    const progress = scrollProgress?.get?.() ?? 0
+    const velocity = Math.min(Math.abs(scrollVelocity?.get?.() ?? 0), 1.5)
+    const pulse = 1 + Math.sin(progress * Math.PI * 14) * .08 + velocity * .12
+    targetScale.current.setScalar(pulse)
+    core.current.scale.lerp(targetScale.current, Math.min(1, delta * 7))
+    if (!reducedMotion) {
+      core.current.rotation.y = clock.elapsedTime * .14 + progress * Math.PI * 3
+      core.current.rotation.x = progress * Math.PI * 1.4
+      ringA.current.rotation.z = clock.elapsedTime * .18 + progress * Math.PI * 4
+      ringB.current.rotation.x = -clock.elapsedTime * .12 - progress * Math.PI * 3
+    }
+  })
+
+  return (
+    <group ref={core} position={[0, 0, -0.35]}>
+      <mesh>
+        <icosahedronGeometry args={[0.32, 2]} />
+        <meshPhysicalMaterial color="#092a37" emissive="#25c9ee" emissiveIntensity={2.2} wireframe transparent opacity={0.78} />
+      </mesh>
+      <mesh ref={ringA} rotation={[1.2, .2, 0]}>
+        <torusGeometry args={[.54, .008, 8, 96]} />
+        <meshBasicMaterial color="#30d9ff" transparent opacity={.46} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+      <mesh ref={ringB} rotation={[.2, 1.1, .4]}>
+        <torusGeometry args={[.72, .006, 8, 96]} />
+        <meshBasicMaterial color="#8deaff" transparent opacity={.22} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+    </group>
+  )
+}
+
+function CameraRig({ scrollProgress, scrollVelocity, reducedMotion }) {
+  const { camera } = useThree()
+  const target = useRef(new THREE.Vector3())
+
+  useFrame((_, delta) => {
+    if (reducedMotion) return
+    const progress = scrollProgress?.get?.() ?? 0
+    const velocity = Math.min(Math.abs(scrollVelocity?.get?.() ?? 0), 1.5)
+    target.current.set(
+      Math.sin(progress * Math.PI * 3.5) * .42,
+      Math.cos(progress * Math.PI * 5) * .2,
+      7 - Math.sin(progress * Math.PI * 2) * .34 - velocity * .08,
+    )
+    camera.position.lerp(target.current, Math.min(1, delta * 2.7))
+    camera.lookAt(0, 0, 0)
+    camera.rotation.z += (Math.sin(progress * Math.PI * 6) * .018 - camera.rotation.z) * Math.min(1, delta * 3)
+  })
+
+  return null
+}
+
+function Network({ congestion, loss, reducedMotion, scrollProgress, scrollVelocity }) {
   const group = useRef()
+  const targetPosition = useRef(new THREE.Vector3())
+  const targetScale = useRef(new THREE.Vector3(1, 1, 1))
   const curves = useMemo(
     () => routeSets.map((points) => new THREE.CatmullRomCurve3(points.map((p) => new THREE.Vector3(...p)))),
     [],
   )
   const packetCount = congestion > 65 ? 26 : 17
 
-  useFrame(({ clock }) => {
-    if (!group.current || reducedMotion) return
-    group.current.rotation.z = Math.sin(clock.elapsedTime * 0.13) * 0.035
-    group.current.position.y = Math.sin(clock.elapsedTime * 0.22) * 0.08
+  useFrame(({ clock }, delta) => {
+    if (!group.current) return
+    const progress = scrollProgress?.get?.() ?? 0
+    const velocity = Math.min(Math.abs(scrollVelocity?.get?.() ?? 0), 1.5)
+    targetPosition.current.set(
+      Math.sin(progress * Math.PI * 4) * .46,
+      Math.cos(progress * Math.PI * 3) * .2 + (reducedMotion ? 0 : Math.sin(clock.elapsedTime * .22) * .08),
+      Math.sin(progress * Math.PI * 2) * -.52,
+    )
+    group.current.position.lerp(targetPosition.current, Math.min(1, delta * 3.2))
+    const scale = .94 + Math.sin(progress * Math.PI * 7) * .08 + velocity * .045
+    targetScale.current.setScalar(scale)
+    group.current.scale.lerp(targetScale.current, Math.min(1, delta * 4))
+    if (!reducedMotion) {
+      group.current.rotation.x = -.08 + Math.sin(progress * Math.PI * 4) * .16
+      group.current.rotation.y = -.1 + Math.cos(progress * Math.PI * 5) * .18
+      group.current.rotation.z = -.1 + Math.sin(progress * Math.PI * 6) * .12 + Math.sin(clock.elapsedTime * .13) * .03
+    }
   })
 
   return (
@@ -79,26 +159,26 @@ function Network({ congestion, loss, reducedMotion }) {
             speed={0.055 + (100 - congestion) * 0.00038}
             lost={loss > 38 && index === 5}
             reducedMotion={reducedMotion}
+            scrollProgress={scrollProgress}
+            scrollVelocity={scrollVelocity}
           />
         )
       })}
       <Float speed={1.3} rotationIntensity={0.25} floatIntensity={0.2}>
-        <mesh position={[0, 0, -0.35]}>
-          <icosahedronGeometry args={[0.32, 2]} />
-          <meshPhysicalMaterial color="#092a37" emissive="#25c9ee" emissiveIntensity={2.2} wireframe transparent opacity={0.75} />
-        </mesh>
+        <SignalCore scrollProgress={scrollProgress} scrollVelocity={scrollVelocity} reducedMotion={reducedMotion} />
       </Float>
     </group>
   )
 }
 
-export default function JourneyCanvas({ congestion, loss, reducedMotion }) {
+export default function JourneyCanvas({ congestion, loss, reducedMotion, scrollProgress, scrollVelocity }) {
   return (
     <div className="journey-canvas" aria-hidden="true">
       <Canvas dpr={[1, 1.6]} camera={{ position: [0, 0, 7], fov: 48 }} gl={{ alpha: true, antialias: true }}>
         <ambientLight intensity={0.34} />
         <pointLight position={[2, 3, 4]} color="#4be3ff" intensity={18} distance={9} />
-        <Network congestion={congestion} loss={loss} reducedMotion={reducedMotion} />
+        <CameraRig scrollProgress={scrollProgress} scrollVelocity={scrollVelocity} reducedMotion={reducedMotion} />
+        <Network congestion={congestion} loss={loss} reducedMotion={reducedMotion} scrollProgress={scrollProgress} scrollVelocity={scrollVelocity} />
         <Sparkles count={reducedMotion ? 20 : 65} scale={[11, 6, 3]} size={0.7} speed={reducedMotion ? 0 : 0.12} opacity={0.34} color="#72dff6" />
       </Canvas>
     </div>

@@ -1,4 +1,4 @@
-import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTransform, useVelocity } from 'framer-motion'
 import { ArrowDown, Pause, Play, RotateCcw, Volume2, VolumeX } from 'lucide-react'
 import React from 'react'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -73,8 +73,48 @@ function LoadingScreen({ progress }) {
   )
 }
 
+function AnimatedTitle({ children }) {
+  const words = children.split(' ')
+
+  return (
+    <h1 aria-label={children}>
+      {words.map((word, index) => (
+        <span className="title-word" aria-hidden="true" key={`${word}-${index}`}>
+          <motion.span
+            initial={{ y: '112%', rotateX: -42, opacity: 0 }}
+            whileInView={{ y: 0, rotateX: 0, opacity: 1 }}
+            viewport={{ amount: 0.72, once: false }}
+            transition={{ duration: 0.72, delay: index * 0.055, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {word}
+          </motion.span>
+          {index < words.length - 1 ? '\u00a0' : ''}
+        </span>
+      ))}
+    </h1>
+  )
+}
+
 function Chapter({ chapter, position, active, onEnter }) {
   const ref = useRef(null)
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] })
+  const imageY = useTransform(scrollYProgress, [0, 1], ['-5%', '5%'])
+  const imageScale = useTransform(scrollYProgress, [0, 0.5, 1], [1.13, 1.025, 1.14])
+  const imageOpacity = useTransform(scrollYProgress, [0, 0.16, 0.82, 1], [0.35, 1, 1, 0.35])
+  const copyY = useTransform(scrollYProgress, [0, 0.2, 0.68, 1], [105, 0, 0, -105])
+  const copyX = useTransform(
+    scrollYProgress,
+    [0, 0.2, 0.72, 1],
+    chapter.align === 'right' ? [90, 0, 0, -55] : [-90, 0, 0, 55],
+  )
+  const copyOpacity = useTransform(scrollYProgress, [0, 0.15, 0.75, 1], [0, 1, 1, 0])
+  const copyScale = useTransform(scrollYProgress, [0, 0.22, 0.76, 1], [0.94, 1, 1, 0.97])
+  const edgeOpacity = useTransform(scrollYProgress, [0, 0.18, 0.8, 1], [0.2, 1, 1, 0.15])
+  const scanX = useTransform(scrollYProgress, [0.04, 0.96], ['-115%', '115%'])
+  const scanOpacity = useTransform(scrollYProgress, [0, 0.12, 0.86, 1], [0, 0.34, 0.34, 0])
+  const ghostY = useTransform(scrollYProgress, [0, 1], [120, -130])
+  const ghostRotate = useTransform(scrollYProgress, [0, 1], [-8, 8])
+  const transitionScale = useTransform(scrollYProgress, [0.7, 1], [0, 1])
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -92,26 +132,27 @@ function Chapter({ chapter, position, active, onEnter }) {
 
   return (
     <section ref={ref} id={chapter.id} className={`chapter chapter-${chapter.align} ${isHero ? 'chapter-hero' : ''}`}>
-      <div
+      <motion.div
         className="chapter-image"
-        style={{ backgroundImage: `url(${chapter.image})` }}
+        animate={active ? { filter: 'saturate(1.06) brightness(1)' } : { filter: 'saturate(.84) brightness(.72)' }}
+        transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+        style={{ backgroundImage: `url(${chapter.image})`, y: imageY, scale: imageScale, opacity: imageOpacity }}
         role="img"
         aria-label={`${chapter.label}: ${chapter.title}`}
       />
-      <div className="chapter-edge" />
+      <motion.div className="chapter-edge" style={{ opacity: edgeOpacity }} />
+      <motion.div className="chapter-scan" style={{ x: scanX, opacity: scanOpacity }} />
+      <motion.div className="chapter-number-ghost" style={{ y: ghostY, rotate: ghostRotate }} aria-hidden="true">{chapter.index}</motion.div>
       <motion.div
         className="chapter-copy"
-        initial={{ opacity: 0, y: 45 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ amount: 0.48, once: false }}
-        transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+        style={{ opacity: copyOpacity, x: copyX, y: copyY, scale: copyScale }}
       >
         <div className="chapter-marker"><span>{chapter.index}</span><i /></div>
-        <p className="chapter-label">{chapter.label}</p>
-        <h1>{chapter.title}</h1>
-        <p className="chapter-lead">{chapter.copy}</p>
-        {!isHero && <p className="chapter-detail">{chapter.detail}</p>}
-        <div className="chapter-fact"><span className="pulse-dot" />{chapter.fact}</div>
+        <motion.p className="chapter-label" initial={{ opacity: 0, letterSpacing: '.34em' }} whileInView={{ opacity: 1, letterSpacing: '.2em' }} viewport={{ amount: .7, once: false }} transition={{ duration: .7 }}>{chapter.label}</motion.p>
+        <AnimatedTitle>{chapter.title}</AnimatedTitle>
+        <motion.p className="chapter-lead" initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ amount: .5, once: false }} transition={{ duration: .7, delay: .16 }}>{chapter.copy}</motion.p>
+        {!isHero && <motion.p className="chapter-detail" initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ amount: .5, once: false }} transition={{ duration: .7, delay: .24 }}>{chapter.detail}</motion.p>}
+        <motion.div className="chapter-fact" initial={{ opacity: 0, x: chapter.align === 'right' ? 20 : -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ amount: .7, once: false }} transition={{ duration: .65, delay: .3 }}><span className="pulse-dot" />{chapter.fact}</motion.div>
         {isHero && (
           <button className="begin-button" onClick={() => document.querySelector('#home')?.scrollIntoView({ behavior: 'smooth' })}>
             <span>Begin the journey</span><ArrowDown size={18} />
@@ -123,7 +164,8 @@ function Chapter({ chapter, position, active, onEnter }) {
           </button>
         )}
       </motion.div>
-      {active && !isHero && <div className="active-glow" />}
+      <motion.div className="chapter-transition" style={{ scaleX: transitionScale }} />
+      <AnimatePresence>{active && !isHero ? <motion.div className="active-glow" initial={{ scaleY: 0, opacity: 0 }} animate={{ scaleY: 1, opacity: 1 }} exit={{ scaleY: 0, opacity: 0 }} transition={{ duration: .7, ease: [0.22, 1, 0.36, 1] }} /> : null}</AnimatePresence>
     </section>
   )
 }
@@ -133,8 +175,8 @@ function RouteLab({ congestion, setCongestion, distance, setDistance, loss, setL
   const routes = congestion > 65 ? 3 : congestion > 28 ? 2 : 1
 
   return (
-    <section id="route-lab" className="route-lab">
-      <div className="route-copy">
+    <motion.section id="route-lab" className="route-lab" initial="hidden" whileInView="visible" viewport={{ amount: .3, once: false }}>
+      <motion.div className="route-copy" variants={{ hidden: { opacity: 0, x: -80 }, visible: { opacity: 1, x: 0, transition: { duration: .9, ease: [0.16, 1, 0.3, 1] } } }}>
         <div className="chapter-marker"><span>LAB</span><i /></div>
         <h2>Change the invisible route.</h2>
         <p>Increase congestion, distance, or packet loss. The live 3D stream above adapts just as real networks do.</p>
@@ -143,13 +185,13 @@ function RouteLab({ congestion, setCongestion, distance, setDistance, loss, setL
           <div><strong>{routes}</strong><span>active {routes === 1 ? 'route' : 'routes'}</span></div>
           <div><strong>{loss > 38 ? 'retrying' : 'stable'}</strong><span>delivery state</span></div>
         </div>
-      </div>
-      <div className="control-panel">
+      </motion.div>
+      <motion.div className="control-panel" variants={{ hidden: { opacity: 0, x: 90, rotateY: -8, scale: .94 }, visible: { opacity: 1, x: 0, rotateY: 0, scale: 1, transition: { duration: 1, delay: .12, ease: [0.16, 1, 0.3, 1] } } }}>
         <Slider label="Congestion" value={congestion} setValue={setCongestion} low="Clear" high="Crowded" />
         <Slider label="Distance" value={distance} setValue={setDistance} low="Local" high="Global" />
         <Slider label="Packet loss" value={loss} setValue={setLoss} low="None" high="Severe" warning />
-      </div>
-    </section>
+      </motion.div>
+    </motion.section>
   )
 }
 
@@ -208,6 +250,10 @@ export default function App() {
   const [ready, setReady] = useState(false)
   const { scrollYProgress } = useScroll()
   const scaleX = useSpring(scrollYProgress, { stiffness: 95, damping: 22, restDelta: 0.001 })
+  const rawScrollVelocity = useVelocity(scrollYProgress)
+  const scrollVelocity = useSpring(rawScrollVelocity, { stiffness: 90, damping: 28, mass: .35 })
+  const ambientY = useTransform(scrollYProgress, [0, 1], ['-15%', '115%'])
+  const ambientRotate = useTransform(scrollYProgress, [0, 1], [-22, 28])
   const playCue = useSoundscape(soundOn)
 
   useEffect(() => {
@@ -240,6 +286,7 @@ export default function App() {
     <>
       <AnimatePresence>{!ready && <LoadingScreen progress={loadProgress} />}</AnimatePresence>
       <motion.div className="scroll-progress" style={{ scaleX }} />
+      <motion.div className="scroll-aurora" style={{ y: ambientY, rotate: ambientRotate }} aria-hidden="true" />
       <header className="site-header">
         <a href="#send" className="brand" aria-label="The Secret Life of a Message, back to start">
           <span className="brand-signal" />
@@ -267,7 +314,13 @@ export default function App() {
         ))}
       </aside>
       <Suspense fallback={null}>
-        <JourneyCanvas congestion={congestion} loss={loss} reducedMotion={Boolean(prefersReducedMotion || paused)} />
+        <JourneyCanvas
+          congestion={congestion}
+          loss={loss}
+          reducedMotion={Boolean(prefersReducedMotion || paused)}
+          scrollProgress={scrollYProgress}
+          scrollVelocity={scrollVelocity}
+        />
       </Suspense>
       <main>
         {chapters.slice(0, 6).map((chapter, index) => (
